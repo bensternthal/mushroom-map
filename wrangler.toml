@@ -1,0 +1,8 @@
+# Cloudflare Worker with static assets: serves site/ at https://mushroom-map.<account>.workers.dev
+# Deployed by .github/workflows/daily.yml via `wrangler deploy` (direct upload, private repo OK).
+name = "mushroom-map"
+compatibility_date = "2025-01-01"
+
+[assets]
+directory = "./site"
+not_found_handling = "404-page"
