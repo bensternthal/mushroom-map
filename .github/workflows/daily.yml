@@ -38,6 +38,20 @@ jobs:
       # Deploy to Cloudflare Pages by direct upload (works from a private repo, no Git integration needed).
       # Needs repo secrets CLOUDFLARE_API_TOKEN (Account > Cloudflare Pages: Edit) and CLOUDFLARE_ACCOUNT_ID,
       # and a Pages project named `mushroom-map` (see README).
+      - name: Create Cloudflare Pages project if missing
+        if: env.CF_TOKEN != '' && env.CF_ACCOUNT != ''
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -e
+          api="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects"
+          code=$(curl -s -o /tmp/proj.json -w '%{http_code}' -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$api/mushroom-map")
+          if [ "$code" = "200" ]; then echo "project exists"; exit 0; fi
+          echo "project lookup returned HTTP $code:"; cat /tmp/proj.json; echo
+          echo "creating project mushroom-map"
+          curl -sf -X POST -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H "Content-Type: application/json" \
+            -d '{"name":"mushroom-map","production_branch":"main"}' "$api" | head -c 400; echo
       - name: Deploy to Cloudflare Pages
         if: env.CF_TOKEN != '' && env.CF_ACCOUNT != ''
         uses: cloudflare/wrangler-action@v3
