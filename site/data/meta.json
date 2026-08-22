@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-08-22T08:44:47-07:00",
+ "generated_at": "2026-08-22T10:37:11-07:00",
  "date": "2026-08-22",
  "doy": 234,
  "weather": {
@@ -10,7 +10,7 @@
   "regional_mean": {
    "rain14_mm": 0.5,
    "rain30_mm": 2.0,
-   "fc3_mm": 0.6,
+   "fc3_mm": 0.5,
    "temp7_c": 18.6
   },
   "cells_triggered_pct": 0.0
@@ -49,7 +49,6 @@
     62483
    ],
    "summary": {
-    "recent_obs_21d": 2,
     "score_max": 12,
     "score_mean_habitat": 3.1,
     "cells_ge15": 0,
@@ -58,8 +57,9 @@
      "rain": 0.1,
      "temp": 0.22,
      "pheno": 0.61,
-     "trigger": 0.25
-    }
+     "trig": 0.25
+    },
+    "recent_obs_21d": 2
    },
    "params": {
     "elev_zones": [
@@ -117,7 +117,6 @@
     54132
    ],
    "summary": {
-    "recent_obs_21d": 1,
     "score_max": 8,
     "score_mean_habitat": 3.8,
     "cells_ge15": 0,
@@ -126,8 +125,9 @@
      "rain": 0.1,
      "temp": 0.32,
      "pheno": 0.53,
-     "trigger": 0.25
-    }
+     "trig": 0.25
+    },
+    "recent_obs_21d": 1
    },
    "params": {
     "elev_zones": [
@@ -176,7 +176,6 @@
     120443
    ],
    "summary": {
-    "recent_obs_21d": 7,
     "score_max": 15,
     "score_mean_habitat": 5.3,
     "cells_ge15": 39,
@@ -185,8 +184,9 @@
      "rain": 0.1,
      "temp": 0.33,
      "pheno": 0.9,
-     "trigger": 0.3
-    }
+     "trig": 0.3
+    },
+    "recent_obs_21d": 7
    },
    "params": {
     "elev_zones": [
@@ -235,7 +235,6 @@
     48701
    ],
    "summary": {
-    "recent_obs_21d": 3,
     "score_max": 8,
     "score_mean_habitat": 2.4,
     "cells_ge15": 0,
@@ -244,8 +243,9 @@
      "rain": 0.1,
      "temp": 0.43,
      "pheno": 0.69,
-     "trigger": 0.15
-    }
+     "trig": 0.15
+    },
+    "recent_obs_21d": 3
    },
    "params": {
     "elev_zones": [
@@ -427,7 +427,8 @@
   "scores": "scores.bin.gz",
   "factors": "factors.bin.gz",
   "recent_obs": "recent_obs.geojson",
-  "public_lands": "public_lands.geojson"
+  "public_lands": "public_lands.geojson",
+  "seasons_index": "../seasons/index.json"
  },
  "inat_historical": {
   "fetched": "2026-08-22",

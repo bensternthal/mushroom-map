@@ -69,7 +69,12 @@ def _request(url, params=None, tries=5, timeout=90, backoff=2.0, stream=False):
                              headers={"User-Agent": USER_AGENT}, stream=stream)
             if r.status_code == 200:
                 return r
-            if r.status_code in (429, 500, 502, 503, 504):
+            if r.status_code == 429:                     # Open-Meteo minutely quota: wait it out
+                last = f"HTTP 429: {r.text[:120]}"
+                print(f"  rate limited, sleeping 65s ({attempt + 1}/{tries})")
+                time.sleep(65)
+                continue
+            if r.status_code in (500, 502, 503, 504):
                 last = f"HTTP {r.status_code}: {r.text[:200]}"
             else:
                 raise FetchError(f"{url} -> HTTP {r.status_code}: {r.text[:300]}")

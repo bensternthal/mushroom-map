@@ -53,6 +53,8 @@ forecast, soil-temp proxy, days since the trigger, elevation, ecoregion class, t
 ```
 scripts/build_static.py   one-time static layers -> data/static/  (committed)
 scripts/daily_update.py   daily: weather + recent iNat -> site/data/  (built by Actions, deployed, never committed)
+scripts/build_season.py   season playback: archived weather -> site/seasons/<year>/  (built by Actions)
+scripts/engine.py         scoring engine shared by the two above
 scripts/model.py          ALL species parameters + scoring functions
 scripts/common.py         grid definition, paths, polite HTTP
 data/static/              elevation, tree cover, ecoregion class, coast distance, iNat KDE + raw cache, PAD-US
@@ -133,6 +135,18 @@ To see how the model behaves under other conditions before the rain arrives (or 
 ```
 
 prints the score distribution per species for synthetic conditions and writes `data/static/preview/scenario_*.png`.
+
+## Season playback
+
+`scripts/build_season.py --year 2024 --year 2025 --year current` scores every day of a fall season (Aug 15 → Dec 31,
+or up to yesterday for the current one) from Open-Meteo's ERA5 **archive** and the cached iNaturalist records, and
+writes `site/seasons/<year>/<date>.bin.gz` (one score grid per day, ~50–100 KB) plus `timeline.json` (regional rain /
+temperature / trigger coverage / sighting counts per day, and the season's observations for the pins). The workflow
+rebuilds these every run (nothing is committed); the frontend's *Season playback* control loads days lazily as you
+scrub or play, with a timeline strip (rain bars, max-score line, sightings stacked by species, trigger date dashed,
+frost shaded). Playback uses reanalysis weather rather than the forecast model and iNat records as they exist today
+(including later uploads), so it is for checking timing and broad pattern — and for tuning — not for grading single
+cells. To add a season, add another `--year` in `daily.yml`.
 
 ## Frontend
 

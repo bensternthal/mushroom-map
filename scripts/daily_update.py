@@ -22,15 +22,13 @@ import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import common as C                      # noqa: E402
+import engine as EN                     # noqa: E402
 import model as M                       # noqa: E402
 
 TZ = ZoneInfo("America/Los_Angeles")
-WX_STEP = 0.1
-WX_LATS = np.round(np.arange(C.LAT_MIN, 47.0 + 1e-9, WX_STEP), 4)      # 26
-WX_LONS = np.round(np.arange(C.LON_MIN, C.LON_MAX + 1e-9, WX_STEP), 4)  # 29
 OPEN_METEO = "https://api.open-meteo.com/v1/forecast"
 INAT = "https://api.inaturalist.org/v1/observations"
-NS = len(M.SPECIES_ORDER)
+NS = EN.NS
 
 # per-cell explanation bytes
 FACTOR_LAYOUT = [
@@ -53,14 +51,10 @@ FACTOR_BYTES = len(FACTOR_LAYOUT)
 # ---------------------------------------------------------------------------
 # weather
 # ---------------------------------------------------------------------------
-def season_year(today):
-    return today.year if today.month >= 8 else today.year - 1
-
-
 def fetch_weather(today):
-    season_start = dt.date(season_year(today), *M.SEASON_START)
+    season_start = dt.date(EN.season_year(today), *M.SEASON_START)
     past_days = int(np.clip((today - season_start).days + 5, 31, 92))
-    pts = [(la, lo) for la in WX_LATS for lo in WX_LONS]
+    pts = EN.WX_POINTS
     print(f"[weather] {len(pts)} points, past_days={past_days}, forecast_days=3")
     results = []
     for i in range(0, len(pts), 100):
@@ -69,71 +63,9 @@ def fetch_weather(today):
             latitude=",".join(f"{p[0]:.2f}" for p in chunk), longitude=",".join(f"{p[1]:.2f}" for p in chunk),
             daily="precipitation_sum,temperature_2m_max,temperature_2m_min",
             past_days=past_days, forecast_days=3, timezone="America/Los_Angeles"), timeout=120)
-        if isinstance(d, dict):
-            d = [d]
-        if len(d) != len(chunk):
-            raise C.FetchError(f"weather batch {i}: expected {len(chunk)} points, got {len(d)}")
-        results += d
+        results += [d] if isinstance(d, dict) else d
         time.sleep(0.5)
-    times = results[0]["daily"]["time"]
-    nd = len(times)
-    shape = (nd, len(WX_LATS), len(WX_LONS))
-    P = np.zeros(shape, np.float32)
-    TX = np.zeros(shape, np.float32)
-    TN = np.zeros(shape, np.float32)
-    E = np.zeros(shape[1:], np.float32)
-    for k, r in enumerate(results):
-        i, j = divmod(k, len(WX_LONS))
-        dly = r["daily"]
-        if dly["time"] != times:
-            raise C.FetchError("weather: inconsistent date axis across points")
-        P[:, i, j] = np.array([v if v is not None else np.nan for v in dly["precipitation_sum"]], np.float32)
-        TX[:, i, j] = np.array([v if v is not None else np.nan for v in dly["temperature_2m_max"]], np.float32)
-        TN[:, i, j] = np.array([v if v is not None else np.nan for v in dly["temperature_2m_min"]], np.float32)
-        E[i, j] = r.get("elevation", 0.0) or 0.0
-    # fill the occasional null (today's partial day) with the previous day
-    for A in (P, TX, TN):
-        for t in range(1, nd):
-            m = np.isnan(A[t])
-            A[t][m] = A[t - 1][m]
-        A[np.isnan(A)] = 0
-    dates = [dt.date.fromisoformat(t) for t in times]
-    return dates, P, TX, TN, E
-
-
-def bilinear_to_cells(field):
-    """field[..., 26, 29] on the 0.1 deg weather grid -> [..., NROWS, NCOLS]."""
-    lats, lons = C.cell_centers()
-    fi = np.clip((lats - WX_LATS[0]) / WX_STEP, 0, len(WX_LATS) - 1 - 1e-6)
-    fj = np.clip((lons - WX_LONS[0]) / WX_STEP, 0, len(WX_LONS) - 1 - 1e-6)
-    i0, j0 = np.floor(fi).astype(int), np.floor(fj).astype(int)
-    wi, wj = (fi - i0).astype(np.float32), (fj - j0).astype(np.float32)
-    f = np.asarray(field, np.float32)
-    a = f[..., i0, :][..., :, j0]
-    b = f[..., i0, :][..., :, j0 + 1]
-    c = f[..., i0 + 1, :][..., :, j0]
-    d = f[..., i0 + 1, :][..., :, j0 + 1]
-    wi = wi[:, None]
-    wj = wj[None, :]
-    return (a * (1 - wi) * (1 - wj) + b * (1 - wi) * wj + c * wi * (1 - wj) + d * wi * wj)
-
-
-def days_since_trigger(P_cells, dates, today):
-    """P_cells [nd, rows, cols] daily precip.  Returns (first, latest) days-since arrays (nan = none)."""
-    nd = len(dates)
-    ss = dt.date(season_year(today), *M.SEASON_START)
-    p48 = P_cells.copy()
-    p48[1:] += P_cells[:-1]
-    first = np.full(P_cells.shape[1:], np.nan, np.float32)
-    latest = np.full(P_cells.shape[1:], np.nan, np.float32)
-    for t in range(nd):
-        if dates[t] < ss or dates[t] >= today:
-            continue
-        ev = p48[t] >= M.TRIGGER_MM_48H
-        ds = float((today - dates[t]).days)
-        first[ev & np.isnan(first)] = ds
-        latest[ev] = ds
-    return first, latest
+    return EN.parse_weather(results, len(pts))
 
 
 # ---------------------------------------------------------------------------
@@ -178,33 +110,20 @@ def main():
     doy = today.timetuple().tm_yday
     os.makedirs(C.SITE_DATA, exist_ok=True)
 
-    L = np.load(os.path.join(C.DATA_STATIC, "layers.npz"))
+    static = EN.Static()
     grid = json.load(open(os.path.join(C.DATA_STATIC, "grid.json")))
-    elev = np.maximum(L["elev"].astype(np.float32), 0)
-    tree_frac = L["tree_pct"].astype(np.float32) / 100
-    eco_class = L["eco_class"]
-    coast_km = L["coast_km"].astype(np.float32)
-    ocean = L["ocean"]
-    kde = np.load(os.path.join(C.DATA_STATIC, "inat_kde.npz"))["kde"].astype(np.float32) / 255
+    elev, ocean, eco_class = static.elev, static.ocean, static.eco_class
 
     # ---- weather (fatal on failure) --------------------------------------
     dates, P, TX, TN, E = fetch_weather(today)
-    try:
-        it = dates.index(today)
-    except ValueError:
-        it = len(dates) - 3
-    hist = slice(0, it)                         # complete days before today
+    if today not in dates:
+        raise C.FetchError(f"weather: today {today} missing from date axis {dates[0]}..{dates[-1]}")
+    it = dates.index(today)
     print(f"[weather] {dates[0]} .. {dates[-1]}; {it} history days, today={today}")
-    Pc = bilinear_to_cells(P)                   # [nd, rows, cols]
-    Ewx = bilinear_to_cells(E)
-    lapse = M.LAPSE_C_PER_KM * (elev - Ewx) / 1000.0
-    Tmean7 = bilinear_to_cells(((TX + TN) / 2)[it - 7:it]).mean(axis=0) - lapse
-    Tmin14 = bilinear_to_cells(TN[it - M.FROST_WINDOW:it]) - lapse
-    frost_days = (Tmin14 < M.FROST_TEMP_C).sum(axis=0)
-    rain14 = Pc[it - 14:it].sum(axis=0)
-    rain30 = Pc[it - 30:it].sum(axis=0)
-    fc3 = Pc[it:it + 3].sum(axis=0)
-    ds_first, ds_latest = days_since_trigger(Pc, dates, today)
+    wx = EN.CellWeather(static, dates, P, TX, TN, E)
+    cond = wx.conditions(today)
+    rain14, rain30, fc3, Tmean7 = cond["rain14"], cond["rain30"], cond["fc3"], cond["tmean7"]
+    frost_days, ds_first, ds_latest = cond["frost_days"], cond["ds_first"], cond["ds_latest"]
 
     # ---- iNat recent (non-fatal) ------------------------------------------
     recent_path = os.path.join(C.SITE_DATA, "recent_obs.geojson")
@@ -225,38 +144,17 @@ def main():
                 for k in M.SPECIES_ORDER}
 
     # ---- scores -------------------------------------------------------------
-    scores = np.zeros((NS, C.NROWS, C.NCOLS), np.uint8)
-    dyn_b = np.zeros((NS, C.NROWS, C.NCOLS), np.uint8)
-    hab_b = np.zeros((NS, C.NROWS, C.NCOLS), np.uint8)
-    pri_b = np.zeros((NS, C.NROWS, C.NCOLS), np.uint8)
-    summary = {}
-    for si, key in enumerate(M.SPECIES_ORDER):
-        sp = M.SPECIES[key]
-        hab = M.habitat(sp, elev, tree_frac, eco_class, coast_km)
-        prior = M.prior_from_density(kde[si])
-        rain = M.rain_score(sp, rain14, rain30)
-        temp = M.temp_score(sp, Tmean7, frost_days)
-        pheno = M.phenology(sp, doy, elev, recent_n[key])
-        trig = M.trigger_score(sp, ds_first, ds_latest)
-        dyn = M.dynamic_score(sp, rain, temp, pheno, trig)
-        s = M.total_score(hab, prior, dyn)
-        s[ocean] = 0
-        scores[si] = s
-        dyn_b[si] = np.round(dyn * 100).astype(np.uint8)
-        hab_b[si] = np.round(hab * 100).astype(np.uint8)
-        pri_b[si] = np.round(prior * 100).astype(np.uint8)
-        land = ~ocean & (hab > 0.05)
-        summary[key] = {
-            "recent_obs_21d": recent_n[key],
-            "score_max": int(s.max()), "score_mean_habitat": round(float(s[land].mean()), 1),
-            "cells_ge15": int((s >= 15).sum()), "cells_ge50": int((s >= 50).sum()),
-            "factor_means_habitat": {"rain": round(float(rain[land].mean()), 2),
-                                     "temp": round(float(temp[land].mean()), 2),
-                                     "pheno": round(float(np.asarray(pheno)[land].mean()), 2) if np.ndim(pheno) else round(float(pheno), 2),
-                                     "trigger": round(float(trig[land].mean()), 2)},
-        }
-        print(f"[score] {key:18s} max {s.max():3d}  mean(habitat cells) {s[land].mean():5.1f}  "
-              f">=15: {(s >= 15).sum():6d}  >=50: {(s >= 50).sum():5d}  recent obs {recent_n[key]}")
+    res = EN.score_day(static, cond, today, recent_n)
+    scores = res["scores"]
+    dyn_b = np.round(res["dyn"] * 100).astype(np.uint8)
+    hab_b = np.round(static.habitat * 100).astype(np.uint8)
+    pri_b = np.round(static.prior * 100).astype(np.uint8)
+    summary = EN.species_summary(static, res)
+    for key in M.SPECIES_ORDER:
+        summary[key]["recent_obs_21d"] = recent_n[key]
+        sm = summary[key]
+        print(f"[score] {key:18s} max {sm['score_max']:3d}  mean(habitat cells) {sm['score_mean_habitat']:5.1f}  "
+              f">=15: {sm['cells_ge15']:6d}  >=50: {sm['cells_ge50']:5d}  recent obs {recent_n[key]}")
 
     # ---- factors -------------------------------------------------------------
     F = np.zeros((C.NROWS, C.NCOLS, FACTOR_BYTES), np.uint8)
@@ -269,7 +167,7 @@ def main():
     F[..., 6] = np.clip(np.round(elev / 16), 0, 255)
     F[..., 7] = eco_class
     F[..., 8] = (frost_days >= M.FROST_DAYS).astype(np.uint8) | (ocean.astype(np.uint8) << 1) | ((eco_class == 0).astype(np.uint8) << 2)
-    F[..., 9] = L["tree_pct"]
+    F[..., 9] = static.tree_pct
     for si in range(NS):
         F[..., 10 + si] = dyn_b[si]
         F[..., 10 + NS + si] = hab_b[si]
@@ -310,7 +208,8 @@ def main():
         "eco_classes": grid["eco_classes"], "eco_labels": grid["eco_labels"],
         "factors": {"bytes_per_cell": FACTOR_BYTES, "layout": FACTOR_LAYOUT},
         "files": {"scores": "scores.bin.gz", "factors": "factors.bin.gz",
-                  "recent_obs": "recent_obs.geojson", "public_lands": "public_lands.geojson"},
+                  "recent_obs": "recent_obs.geojson", "public_lands": "public_lands.geojson",
+                  "seasons_index": "../seasons/index.json"},
         "inat_historical": {"fetched": grid["inat_fetched"], "counts": grid["inat_counts"]},
         "model": {"gamma": M.GAMMA, "trigger_mm_48h": M.TRIGGER_MM_48H, "season_start": list(M.SEASON_START),
                   "frost": [M.FROST_TEMP_C, M.FROST_DAYS, M.FROST_WINDOW], "kde_sigma_km": M.KDE_SIGMA_KM},

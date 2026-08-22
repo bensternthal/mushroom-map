@@ -27,8 +27,11 @@ jobs:
       - run: pip install -r requirements.txt
       - name: Build daily score grids
         run: python scripts/daily_update.py
+      - name: Build season playback (past seasons + this season so far)
+        continue-on-error: true          # playback is optional; the live map still deploys if the archive API is down
+        run: python scripts/build_season.py --year 2024 --year 2025 --year current
       - name: Show payload
-        run: ls -la site/data && du -sh site
+        run: ls -la site/data && du -sh site site/seasons
       - name: Keep the generated site as an artifact (debugging / manual download)
         uses: actions/upload-artifact@v4
         with:

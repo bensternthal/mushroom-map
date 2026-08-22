@@ -53,6 +53,13 @@
   #tooltip { position: absolute; z-index: 5; pointer-events: none; background: rgba(30,42,34,.92); color: #fff; padding: 5px 8px;
              border-radius: 6px; font-size: 12px; display: none; max-width: 260px; }
   a { color: #1d6b4f; }
+  #pb { border-top: 1px solid var(--line); margin-top: 8px; padding-top: 6px; }
+  #pb select, #pb button { font: inherit; font-size: 12px; padding: 2px 6px; border: 1px solid var(--line); border-radius: 6px; background: #fff; }
+  #pbplay { width: 32px; cursor: pointer; }
+  #pbday { flex: 1; width: auto; }
+  #pbdate { font-weight: 600; min-width: 78px; text-align: right; font-variant-numeric: tabular-nums; }
+  #pbtl { width: 100%; height: 84px; display: block; margin-top: 4px; cursor: pointer; border-radius: 4px; background: #f6f8f6; }
+  .pbstat { display: grid; grid-template-columns: 1fr 1fr; gap: 1px 10px; font-size: 12px; margin: 4px 0; }
   #err { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); background: #fff3f0; border: 1px solid #e3a297;
          padding: 14px 18px; border-radius: 8px; z-index: 9; display: none; max-width: 420px; }
 </style>
@@ -70,6 +77,19 @@
   <div class="row"><span>Hide cells below</span><input type="range" id="minscore" min="0" max="80" step="5" value="15"><b id="minval">15</b></div>
   <div class="legend" id="legend"></div>
   <div class="stat" id="stats"></div>
+  <div id="pb" style="display:none">
+    <div class="row"><label><input type="checkbox" id="pbon"> <b>Season playback</b></label>
+      <select id="pbseason"></select></div>
+    <div id="pbctl" style="display:none">
+      <div class="row"><button id="pbplay" title="play / pause (space)">▶</button>
+        <input type="range" id="pbday" min="0" max="0" value="0"><span id="pbdate"></span></div>
+      <canvas id="pbtl"></canvas>
+      <div class="pbstat" id="pbstat"></div>
+      <div class="row small"><span>Speed</span><select id="pbspeed"><option value="500">slow</option><option value="220" selected>normal</option><option value="80">fast</option></select>
+        <span>← → step · space play</span></div>
+      <div class="small">Replays the model day by day from archived weather (ERA5) and iNaturalist records as they exist today. Pins show sightings from the previous two weeks and fade with age.</div>
+    </div>
+  </div>
   <details><summary>How to read this</summary>
     <div class="small">
       Each ~1 km cell shows a <b>relative suitability index (0–100)</b> for finding each species — <b>not a probability</b> and not a guarantee.
@@ -119,6 +139,8 @@
 
   // ---------------- state ----------------
   const state = { active: new Set(SP.map(s => s.key)), lands: true, obs: true, hill: true, min: 15 };
+  let curScores = scores;            // live scores, or the playback day's scores
+  const pb = { on: false, season: null, tl: null, idx: 0, cache: new Map(), playing: false, timer: null, obs: [] };
 
   // ---------------- header / chips / legend ----------------
   const gen = new Date(meta.generated_at);
@@ -186,7 +208,7 @@
     const d = img.data, act = SP.filter(s => state.active.has(s.key)), min = state.min;
     for (let i = 0; i < NCELL; i++) {
       let best = -1, bs = -1;
-      for (const s of act) { const v = scores[s.index * NCELL + i]; if (v > bs) { bs = v; best = s.index; } }
+      for (const s of act) { const v = curScores[s.index * NCELL + i]; if (v > bs) { bs = v; best = s.index; } }
       if (best < 0 || bs <= 0 || bs < min) continue;
       const c = SP[best].color, a = 45 + 210 * (bs - min) / Math.max(100 - min, 1);
       const o = i * 4; d[o] = c[0]; d[o + 1] = c[1]; d[o + 2] = c[2]; d[o + 3] = a;
@@ -213,7 +235,7 @@
     return pts;
   }
   const spByKey = Object.fromEntries(SP.map(s => [s.key, s]));
-  const obsVisible = () => obs.features.filter(f => state.active.has(f.properties.species));
+  const obsVisible = () => (pb.on ? pb.obs : obs.features).filter(f => state.active.has(f.properties.species));
 
   function layers() {
     const vis = obsVisible();
@@ -231,12 +253,12 @@
       new deck.PathLayer({
         id: 'obs-halo', data: vis.filter(f => f.properties.obscured), visible: state.obs,
         getPath: f => circle(f.geometry.coordinates[0], f.geometry.coordinates[1], 10),
-        getColor: f => [...spByKey[f.properties.species].color, 170], widthMinPixels: 1.5, widthMaxPixels: 2,
+        getColor: f => [...spByKey[f.properties.species].color, Math.round((f.properties.alpha ?? 255) * 0.66)], widthMinPixels: 1.5, widthMaxPixels: 2,
         getDashArray: [6, 4], dashJustified: true, extensions: [new deck.PathStyleExtension({ dash: true })],
       }),
       new deck.ScatterplotLayer({
         id: 'obs', data: vis, visible: state.obs, pickable: true,
-        getPosition: f => f.geometry.coordinates, getFillColor: f => spByKey[f.properties.species].color,
+        getPosition: f => f.geometry.coordinates, getFillColor: f => [...spByKey[f.properties.species].color, f.properties.alpha ?? 255],
         getLineColor: [255, 255, 255, 230], stroked: true, lineWidthMinPixels: 1.5,
         radiusMinPixels: 5, radiusMaxPixels: 9, getRadius: 300,
         onClick: (info) => { showObs(info.object); return true; },
@@ -258,7 +280,7 @@
     }
     if (layer.id === 'scores') {
       const c = cellAt(coordinate); if (!c) return null;
-      const parts = SP.filter(s => state.active.has(s.key)).map(s => `${s.name.split(' ').pop()} <b>${scores[s.index * NCELL + c.idx]}</b>`);
+      const parts = SP.filter(s => state.active.has(s.key)).map(s => `${s.name.split(' ').pop()} <b>${curScores[s.index * NCELL + c.idx]}</b>`);
       return { html: parts.join(' · ') + '<br><span style="opacity:.7">click for details</span>', style: tipStyle };
     }
     return null;
@@ -271,22 +293,29 @@
     const temp = (F(i, 'temp7_enc') / 4 - 20).toFixed(1);
     const elev = F(i, 'elev_x16') * 16, eco = meta.eco_labels[meta.eco_classes[F(i, 'eco_class')]];
     const rows = SP.map(s => {
-      const on = state.active.has(s.key), sc = scores[s.index * NCELL + i];
+      const on = state.active.has(s.key), sc = curScores[s.index * NCELL + i];
       const hab = F(i, `${s.key}_hab`), pri = F(i, `${s.key}_prior`), dyn = F(i, `${s.key}_dyn`);
       return `<tr style="opacity:${on ? 1 : .45}"><td><span class="sw" style="background:rgb(${s.color})"></span>${s.name}</td>
-        <td><b>${sc}</b></td><td>${hab}</td><td>${Math.max(0, (pri - 50) * 2)}%</td><td>${dyn}</td></tr>`;
+        <td><b>${sc}</b></td><td>${hab}</td><td>${Math.max(0, (pri - 50) * 2)}%</td><td>${pb.on ? '–' : dyn}</td></tr>`;
     }).join('');
+    const day = pb.on ? pb.tl.days[pb.idx] : null;
+    const cond = day ? `<div class="kv">
+        <span>Day</span><span><b>${day.date}</b> (playback)</span>
+        <span>Regional rain 14 d / 30 d</span><span>${day.rain14} mm / ${day.rain30} mm</span>
+        <span>Regional 7-d mean temp</span><span>${day.temp7} °C</span>
+        <span>Season trigger reached</span><span>${day.trig_pct}% of cells${day.frost_pct > 0 ? ' · frost ' + day.frost_pct + '%' : ''}</span>
+      </div><div class="small" style="margin-top:5px">Playback popups show that day's scores; habitat and history are static. Per-cell weather is only stored for the live day.</div>` : '';
     const html = `<h3>Cell ${c.lat.toFixed(3)}, ${c.lon.toFixed(3)}</h3>
       <div class="small">${elev} m · ${eco} · ${F(i, 'tree_pct')}% tree cover${flags & 2 ? ' · open water' : ''}</div>
       <table class="sc"><tr><th>Species</th><th>Score</th><th>Habitat</th><th>History</th><th>Now</th></tr>${rows}</table>
-      <div class="kv">
+      ${cond}<div class="kv" style="display:${day ? 'none' : 'grid'}">
         <span>Rain 14 d / 30 d</span><span>${F(i, 'rain14_mm')} mm / ${F(i, 'rain30_mm_x2') * 2} mm</span>
         <span>Forecast next 3 d</span><span>${F(i, 'fc3_mm')} mm</span>
         <span>Soil-temp proxy (7-d mean air)</span><span>${temp} °C${flags & 1 ? ' · <b>hard frost</b>' : ''}</span>
         <span>Season-opening rain</span><span>${dsf === 255 ? 'none yet (≥15 mm / 48 h since Aug 15)' : dsf + ' days ago'}</span>
         <span>Latest big rain</span><span>${dsl === 255 ? '—' : dsl + ' days ago'}</span>
       </div>
-      <div class="small" style="margin-top:5px">Habitat 0–100 · History = smoothed iNaturalist density · Now = weather × phenology × trigger (0–100). Relative index, not a probability.</div>`;
+      <div class="small" style="margin-top:5px;display:${day ? 'none' : 'block'}">Habitat 0–100 · History = smoothed iNaturalist density · Now = weather × phenology × trigger (0–100). Relative index, not a probability.</div>`;
     popup.setLngLat([c.lon, c.lat]).setHTML(html).addTo(map);
   }
   function showObs(f) {
@@ -297,6 +326,110 @@
       <div style="margin-top:4px"><a href="${p.url}" target="_blank" rel="noopener">Open on iNaturalist ↗</a></div>`;
     popup.setLngLat(f.geometry.coordinates).setHTML(html).addTo(map);
   }
+
+  // ---------------- season playback ----------------
+  (async function initPlayback() {
+    let index;
+    try { index = await loadJson('seasons/index.json'); } catch (e) { return; }
+    if (!index.seasons || !index.seasons.length) return;
+    $('#pb').style.display = 'block';
+    const sel = $('#pbseason');
+    index.seasons.slice().reverse().forEach(sn => {
+      const o = document.createElement('option'); o.value = sn.year;
+      o.textContent = `${sn.year}${sn.current ? ' (this season)' : ''} · ${sn.days} days`; sel.appendChild(o);
+    });
+    const canvas = $('#pbtl');
+    const dayDate = i => pb.tl.days[i].date;
+    const speciesColor = k => spByKey[k].color;
+
+    async function loadSeason(year) {
+      pb.tl = await loadJson(`seasons/${year}/timeline.json`);
+      pb.season = year; pb.cache.clear();
+      const sl = $('#pbday'); sl.max = pb.tl.days.length - 1;
+      const trig = pb.tl.first_trigger_date ? pb.tl.days.findIndex(d => d.date === pb.tl.first_trigger_date) : -1;
+      await setDay(Math.max(0, trig - 10));
+    }
+    async function dayScores(i) {
+      const d = dayDate(i);
+      if (!pb.cache.has(d)) pb.cache.set(d, loadGz(`seasons/${pb.season}/${d}.bin.gz`));
+      return pb.cache.get(d);
+    }
+    async function setDay(i) {
+      i = Math.max(0, Math.min(pb.tl.days.length - 1, i));
+      pb.idx = i; $('#pbday').value = i; $('#pbdate').textContent = dayDate(i);
+      const sc = await dayScores(i);
+      if (pb.idx !== i || !pb.on) return;            // superseded while loading
+      for (let k = 1; k <= 4; k++) if (i + k < pb.tl.days.length) dayScores(i + k);
+      curScores = sc;
+      const t = new Date(dayDate(i) + 'T00:00:00'), tMs = t.getTime();
+      pb.obs = pb.tl.obs.filter(o => { const a = (tMs - new Date(o[1] + 'T00:00:00').getTime()) / 864e5; return a >= 0 && a <= 14; })
+        .map(o => { const age = (tMs - new Date(o[1] + 'T00:00:00').getTime()) / 864e5; return {
+          geometry: { coordinates: [o[4], o[3]] },
+          properties: { id: o[0], date: o[1], species: o[2], obscured: !!o[5], grade: o[6] === 'r' ? 'research' : 'needs_id',
+                        taxon: spByKey[o[2]].latin.split(' (')[0], url: `https://www.inaturalist.org/observations/${o[0]}`,
+                        alpha: Math.round(255 - age * 13) } }; });
+      const d = pb.tl.days[i];
+      $('#pbstat').innerHTML = `<span>Rain 14 d / 30 d</span><b>${d.rain14} / ${d.rain30} mm</b>
+        <span>7-day mean temp</span><b>${d.temp7} °C</b>
+        <span>Trigger reached</span><b>${d.trig_pct}%${d.frost_pct > 0 ? ' · frost ' + d.frost_pct + '%' : ''}</b>
+        <span>Sightings that day</span><b>${SP.map(s => d.species[s.key].obs).reduce((a, b) => a + b, 0)}</b>`
+        + SP.map(s => `<span><span class="sw" style="background:rgb(${s.color})"></span>${s.name}</span><b>max ${d.species[s.key].max} · ${d.species[s.key].ge50} cells ≥50</b>`).join('');
+      drawTimeline(); update();
+    }
+    function drawTimeline() {
+      const dpr = window.devicePixelRatio || 1, Wc = canvas.clientWidth, Hc = canvas.clientHeight;
+      canvas.width = Wc * dpr; canvas.height = Hc * dpr;
+      const ctx = canvas.getContext('2d'); ctx.scale(dpr, dpr);
+      ctx.clearRect(0, 0, Wc, Hc);
+      const days = pb.tl.days, n = days.length, x = i => (i + 0.5) / n * Wc, bw = Math.max(1, Wc / n - 0.5);
+      const rainMax = Math.max(5, ...days.map(d => d.rain_day)), rainH = 34, obsTop = 44, obsH = 26, obsMax = Math.max(3, ...days.map(d => SP.reduce((a, s) => a + d.species[s.key].obs, 0)));
+      // frost shading
+      days.forEach((d, i) => { if (d.frost_pct >= 50) { ctx.fillStyle = 'rgba(120,140,170,.25)'; ctx.fillRect(x(i) - bw / 2, 0, bw + 0.5, Hc); } });
+      // rain bars
+      ctx.fillStyle = 'rgba(60,120,200,.75)';
+      days.forEach((d, i) => { const h = d.rain_day / rainMax * rainH; ctx.fillRect(x(i) - bw / 2, rainH + 4 - h, bw, h); });
+      // max score line (sum over active species / count) as a thin dark line over the rain area
+      ctx.strokeStyle = 'rgba(30,42,34,.7)'; ctx.lineWidth = 1.2; ctx.beginPath();
+      days.forEach((d, i) => { const act = SP.filter(s => state.active.has(s.key)); const v = act.length ? Math.max(...act.map(s => d.species[s.key].max)) : 0;
+        const y = rainH + 4 - v / 100 * rainH; i ? ctx.lineTo(x(i), y) : ctx.moveTo(x(i), y); });
+      ctx.stroke();
+      // sightings stacked
+      days.forEach((d, i) => { let y = obsTop + obsH; SP.forEach(s => { const c = d.species[s.key].obs; if (!c) return;
+        const h = c / obsMax * obsH; ctx.fillStyle = `rgb(${s.color})`; ctx.fillRect(x(i) - bw / 2, y - h, bw, h); y -= h; }); });
+      // trigger marker
+      if (pb.tl.first_trigger_date) { const i = days.findIndex(d => d.date === pb.tl.first_trigger_date);
+        ctx.setLineDash([3, 3]); ctx.strokeStyle = 'rgba(200,80,40,.9)'; ctx.beginPath(); ctx.moveTo(x(i), 0); ctx.lineTo(x(i), Hc); ctx.stroke(); ctx.setLineDash([]); }
+      // month ticks
+      ctx.fillStyle = 'rgba(93,107,98,.9)'; ctx.font = '9px sans-serif';
+      days.forEach((d, i) => { if (d.date.endsWith('-01')) { ctx.fillRect(x(i), Hc - 10, 1, 10); ctx.fillText(new Date(d.date + 'T00:00:00').toLocaleString(undefined, { month: 'short' }), x(i) + 2, Hc - 1); } });
+      ctx.fillText('rain · max score', 3, 9); ctx.fillText('sightings', 3, obsTop + 8);
+      // cursor
+      ctx.fillStyle = 'rgba(30,42,34,.9)'; ctx.fillRect(x(pb.idx) - 0.75, 0, 1.5, Hc);
+    }
+    function play(on) {
+      pb.playing = on; $('#pbplay').textContent = on ? '❚❚' : '▶';
+      clearInterval(pb.timer);
+      if (on) pb.timer = setInterval(() => { if (pb.idx >= pb.tl.days.length - 1) return play(false); setDay(pb.idx + 1); }, +$('#pbspeed').value);
+    }
+    async function setOn(on) {
+      pb.on = on; $('#pbctl').style.display = on ? 'block' : 'none'; $('#pbon').checked = on;
+      if (on) { if (pb.season !== +sel.value) await loadSeason(+sel.value); else await setDay(pb.idx); }
+      else { play(false); curScores = scores; pb.obs = []; update(); }
+    }
+    $('#pbon').onchange = e => setOn(e.target.checked);
+    sel.onchange = async () => { if (pb.on) { play(false); await loadSeason(+sel.value); } };
+    $('#pbday').oninput = e => { play(false); setDay(+e.target.value); };
+    $('#pbplay').onclick = () => { if (pb.idx >= pb.tl.days.length - 1) setDay(0); play(!pb.playing); };
+    $('#pbspeed').onchange = () => { if (pb.playing) play(true); };
+    canvas.onclick = e => { const r = canvas.getBoundingClientRect(); play(false); setDay(Math.floor((e.clientX - r.left) / r.width * pb.tl.days.length)); };
+    window.addEventListener('keydown', e => {
+      if (!pb.on || e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+      if (e.key === 'ArrowRight') { play(false); setDay(pb.idx + 1); }
+      else if (e.key === 'ArrowLeft') { play(false); setDay(pb.idx - 1); }
+      else if (e.key === ' ') { e.preventDefault(); play(!pb.playing); }
+    });
+    chips.addEventListener('click', () => { if (pb.on) drawTimeline(); });
+  })();
 
   // ---------------- controls ----------------
   $('#lands').onchange = e => { state.lands = e.target.checked; update(); };
