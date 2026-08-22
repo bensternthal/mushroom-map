@@ -13,7 +13,7 @@ A static, daily-updated deck.gl map of northwest Oregon / southwest Washington (
 The number shown is a **0–100 relative suitability index, not a probability** and not a guarantee. It is meant to
 answer "where and when is it worth looking?", and to be tuned by someone who actually picks.
 
-Live site: GitHub Pages, rebuilt every morning by GitHub Actions (see *Setup*).
+Live site: Cloudflare Pages (`mushroom-map.pages.dev`), rebuilt every morning by GitHub Actions (see *Setup*).
 
 ## How a cell is scored
 
@@ -59,7 +59,7 @@ data/static/              elevation, tree cover, ecoregion class, coast distance
 data/static/preview/      PNG eyeball checks of every static layer
 site/index.html           single-file frontend (deck.gl + MapLibre, CDN, no build step)
 site/data/                generated output (a seed copy is committed so the site works before the first Action run)
-.github/workflows/daily.yml
+.github/workflows/daily.yml   build on Actions, deploy to Cloudflare Pages
 ```
 
 ### Data sources (all free, no keys)
@@ -91,13 +91,28 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 python3 -m http.server 8765 --directory site  # open http://localhost:8765
 ```
 
-Deploy:
+Deploy (private repo → Cloudflare Pages, free):
 
-1. Create a GitHub repo and push (`gh repo create mushroom-map --public --source=. --push`).
-2. Settings → Pages → *Build and deployment* → Source: **GitHub Actions**.
-3. Actions → *Daily forecast* → *Run workflow* once. The site is live at `https://<user>.github.io/mushroom-map/`
-   and rebuilds at 06:30 Pacific daily. Daily data is deployed as a Pages artifact, never committed, so the repo
-   stays small.
+GitHub Pages is not available on a private repo with a free GitHub plan, so the workflow builds on GitHub Actions
+and uploads `site/` straight to **Cloudflare Pages** with Wrangler (direct upload — Cloudflare never needs access to
+the repo). One-time setup:
+
+1. Cloudflare dashboard → *Workers & Pages* → *Create* → *Pages* → **Upload assets** → project name `mushroom-map`
+   (upload anything once, e.g. the local `site/` folder; the workflow overwrites it). Or with the CLI:
+   `npx wrangler login && npx wrangler pages project create mushroom-map --production-branch=main`.
+2. Cloudflare → *My Profile* → *API Tokens* → *Create Token* → template **Edit Cloudflare Workers** (or a custom
+   token with *Account → Cloudflare Pages → Edit*). Copy the token and your *Account ID* (dashboard sidebar).
+3. Add both as repo secrets:
+   ```bash
+   gh secret set CLOUDFLARE_API_TOKEN -R bensternthal/mushroom-map
+   gh secret set CLOUDFLARE_ACCOUNT_ID -R bensternthal/mushroom-map
+   ```
+4. Actions → *Daily forecast* → *Run workflow*. The site is live at `https://mushroom-map.pages.dev` and rebuilds at
+   06:30 Pacific daily. Daily data is uploaded as a deployment, never committed, so the repo stays small. Each run also
+   keeps `site/` as a 7-day workflow artifact.
+
+(To use GitHub Pages instead — public repo or a Pro plan — replace the deploy step with
+`actions/upload-pages-artifact` + `actions/deploy-pages` and set Pages → Source to *GitHub Actions*.)
 
 If the weather fetch fails the workflow exits non-zero (the previous deployment stays live). If the iNaturalist
 recent-sightings fetch fails, the run continues with the committed seed `recent_obs.geojson` and a warning.

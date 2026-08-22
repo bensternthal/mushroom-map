@@ -7,16 +7,17 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
-  group: pages
+  group: deploy
   cancel-in-progress: false
 
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
+    env:
+      CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -28,16 +29,22 @@ jobs:
         run: python scripts/daily_update.py
       - name: Show payload
         run: ls -la site/data && du -sh site
-      - uses: actions/upload-pages-artifact@v3
+      - name: Keep the generated site as an artifact (debugging / manual download)
+        uses: actions/upload-artifact@v4
         with:
+          name: site
           path: site
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
+          retention-days: 7
+      # Deploy to Cloudflare Pages by direct upload (works from a private repo, no Git integration needed).
+      # Needs repo secrets CLOUDFLARE_API_TOKEN (Account > Cloudflare Pages: Edit) and CLOUDFLARE_ACCOUNT_ID,
+      # and a Pages project named `mushroom-map` (see README).
+      - name: Deploy to Cloudflare Pages
+        if: env.CF_TOKEN != '' && env.CF_ACCOUNT != ''
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy site --project-name=mushroom-map --branch=main --commit-dirty=true
+      - name: Deploy skipped
+        if: env.CF_TOKEN == '' || env.CF_ACCOUNT == ''
+        run: echo "::warning::CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID secrets not set - built site kept as artifact only (see README)."
