@@ -34,12 +34,13 @@ def main():
     kde = np.load(os.path.join(C.DATA_STATIC, "inat_kde.npz"))["kde"].astype(np.float32) / 255
     elev = np.maximum(L["elev"].astype(np.float32), 0)
     tf, eco, ck, ocean = L["tree_pct"] / 100.0, L["eco_class"], L["coast_km"].astype(np.float32), L["ocean"]
+    bf = L["built_pct"] / 100.0 if "built_pct" in L else np.zeros_like(tf)
     full = lambda v: np.full(elev.shape, np.nan if v < 0 else v, np.float32)   # noqa: E731
     t7 = a.temp - M.LAPSE_C_PER_KM * elev / 1000
     print(f"rain14={a.rain14} rain30={a.rain30} lowlandT={a.temp} doy={a.doy} first={a.first} latest={a.latest} recent={a.recent} frost={a.frost}")
     for si, k in enumerate(M.SPECIES_ORDER):
         sp = M.SPECIES[k]
-        hab = M.habitat(sp, elev, tf, eco, ck)
+        hab = M.habitat(sp, elev, tf, eco, ck, bf)
         dyn = M.dynamic_score(sp, M.rain_score(sp, full(a.rain14), full(a.rain30)),
                               M.temp_score(sp, t7, np.full(elev.shape, a.frost)),
                               M.phenology(sp, a.doy, elev, a.recent),

@@ -9,8 +9,13 @@ A static, daily-updated deck.gl map of northwest Oregon / southwest Washington (
 | White chanterelle (*Cantharellus subalbidus*) | `white_chanterelle` | Doug-fir / western hemlock 0–1000 m |
 | Pacific golden chanterelle (*Cantharellus formosus*) | `golden_chanterelle` | Doug-fir / western hemlock 0–1200 m, Coast Range + W Cascades |
 | Fall king bolete (*Boletus edulis* group) | `king_bolete` | coastal Sitka spruce / shore pine (≤10 km from ocean) **or** Cascade true fir / hemlock 800–1500 m (weighted 0.7) |
+| *Psilocybe azurescens* | `psilocybe_azurescens` | coastal dune grass / drift-wood debris, ≤6 km from the ocean, <120 m; no forest requirement; fruits through frost (Oct–Dec) |
+| *Psilocybe cyanescens* | `psilocybe_cyanescens` | wood-chip / mulch landscaping (WorldCover built-up fraction) in lowland towns, secondarily lowland alder/cottonwood debris; <600 m; fruits through frost (Oct–Jan) |
 
-The number shown is a **0–100 relative suitability index, not a probability** and not a guarantee. It is meant to
+The number shown is a **0–100 relative suitability index, not a probability** and not a guarantee. The two *Psilocybe*
+layers are natural-history information (habitat model + public iNaturalist records, which iNat obscures for these
+taxa); they are controlled substances whose legal status differs between Oregon and Washington and changes over time —
+the map is not collection guidance. It is meant to
 answer "where and when is it worth looking?", and to be tuned by someone who actually picks.
 
 Live site: Cloudflare Workers (`mushroom-map.<subdomain>.workers.dev`), rebuilt every morning by GitHub Actions (see *Setup*).
@@ -24,7 +29,8 @@ globals right below it. Per cell and species:
 score = 100 · (habitat · prior · dynamic) ^ GAMMA            GAMMA = 0.5
 
 habitat  = forest_score · max over habitat zones ( ecoregion_weight · elevation_band · coast_band )
-           forest_score   ramp on ESA WorldCover tree-cover fraction (0.15 → 0.5)
+           forest_score   ramp on ESA WorldCover tree-cover fraction (0.15 → 0.5); none for non-forest species
+           builtup        optional trapezoid on WorldCover built-up fraction (landscaping / wood-chip species)
            ecoregion      EPA Level IV ecoregion mapped to an assemblage class (Sitka spruce zone, western hemlock
                           zone, silver fir zone, Willamette Valley floor ≈ 0, …)
            elevation_band trapezoid in metres, per zone

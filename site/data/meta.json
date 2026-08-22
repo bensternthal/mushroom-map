@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-08-22T10:37:11-07:00",
+ "generated_at": "2026-08-22T11:49:19-07:00",
  "date": "2026-08-22",
  "doy": 234,
  "weather": {
@@ -10,7 +10,7 @@
   "regional_mean": {
    "rain14_mm": 0.5,
    "rain30_mm": 2.0,
-   "fc3_mm": 0.5,
+   "fc3_mm": 0.4,
    "temp7_c": 18.6
   },
   "cells_triggered_pct": 0.0
@@ -288,6 +288,133 @@
      "post": 0.3
     }
    }
+  },
+  {
+   "key": "psilocybe_azurescens",
+   "index": 4,
+   "name": "Psilocybe azurescens",
+   "latin": "Psilocybe azurescens",
+   "color": [
+    40,
+    90,
+    215
+   ],
+   "inat_taxa": [
+    179652
+   ],
+   "summary": {
+    "score_max": 1,
+    "score_mean_habitat": 0.5,
+    "cells_ge15": 0,
+    "cells_ge50": 0,
+    "factor_means_habitat": {
+     "rain": 0.1,
+     "temp": 0.1,
+     "pheno": 0.05,
+     "trig": 0.2
+    },
+    "recent_obs_21d": 0
+   },
+   "params": {
+    "elev_zones": [
+     [
+      "coastal dune grass / drift-wood debris (Columbia mouth, Long Beach)",
+      [
+       -1,
+       0,
+       40,
+       120
+      ]
+     ]
+    ],
+    "rain14_mm": [
+     25,
+     80
+    ],
+    "temp_c": [
+     -2,
+     2,
+     10,
+     15
+    ],
+    "peak_doy": 305,
+    "trigger": {
+     "mode": "first",
+     "pre": 0.2,
+     "rise": 14,
+     "plateau": 40,
+     "tail": 80,
+     "post": 0.7
+    }
+   }
+  },
+  {
+   "key": "psilocybe_cyanescens",
+   "index": 5,
+   "name": "Psilocybe cyanescens",
+   "latin": "Psilocybe cyanescens",
+   "color": [
+    135,
+    60,
+    195
+   ],
+   "inat_taxa": [
+    179085
+   ],
+   "summary": {
+    "score_max": 1,
+    "score_mean_habitat": 0.2,
+    "cells_ge15": 0,
+    "cells_ge50": 0,
+    "factor_means_habitat": {
+     "rain": 0.1,
+     "temp": 0.11,
+     "pheno": 0.05,
+     "trig": 0.2
+    },
+    "recent_obs_21d": 0
+   },
+   "params": {
+    "elev_zones": [
+     [
+      "wood-chip / mulch landscaping in lowland towns",
+      [
+       -1,
+       0,
+       300,
+       600
+      ]
+     ],
+     [
+      "lowland alder / cottonwood debris",
+      [
+       -1,
+       0,
+       300,
+       600
+      ]
+     ]
+    ],
+    "rain14_mm": [
+     25,
+     80
+    ],
+    "temp_c": [
+     -2,
+     3,
+     11,
+     16
+    ],
+    "peak_doy": 314,
+    "trigger": {
+     "mode": "first",
+     "pre": 0.2,
+     "rise": 14,
+     "plateau": 45,
+     "tail": 90,
+     "post": 0.7
+    }
+   }
   }
  ],
  "score": {
@@ -331,7 +458,7 @@
   "other": "Other (non-forest region)"
  },
  "factors": {
-  "bytes_per_cell": 22,
+  "bytes_per_cell": 28,
   "layout": [
    [
     "rain14_mm",
@@ -390,6 +517,14 @@
     "weather x phenology 0-100"
    ],
    [
+    "psilocybe_azurescens_dyn",
+    "weather x phenology 0-100"
+   ],
+   [
+    "psilocybe_cyanescens_dyn",
+    "weather x phenology 0-100"
+   ],
+   [
     "matsutake_hab",
     "habitat 0-100"
    ],
@@ -403,6 +538,14 @@
    ],
    [
     "king_bolete_hab",
+    "habitat 0-100"
+   ],
+   [
+    "psilocybe_azurescens_hab",
+    "habitat 0-100"
+   ],
+   [
+    "psilocybe_cyanescens_hab",
     "habitat 0-100"
    ],
    [
@@ -420,6 +563,14 @@
    [
     "king_bolete_prior",
     "iNat prior 0-100 (50 = no history)"
+   ],
+   [
+    "psilocybe_azurescens_prior",
+    "iNat prior 0-100 (50 = no history)"
+   ],
+   [
+    "psilocybe_cyanescens_prior",
+    "iNat prior 0-100 (50 = no history)"
    ]
   ]
  },
@@ -436,7 +587,9 @@
    "matsutake": 362,
    "white_chanterelle": 226,
    "golden_chanterelle": 1042,
-   "king_bolete": 1271
+   "king_bolete": 1271,
+   "psilocybe_azurescens": 393,
+   "psilocybe_cyanescens": 363
   }
  },
  "model": {

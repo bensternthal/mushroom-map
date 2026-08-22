@@ -34,10 +34,11 @@ class Static:
         self.tree_frac = self.tree_pct.astype(np.float32) / 100
         self.eco_class = L["eco_class"]
         self.coast_km = L["coast_km"].astype(np.float32)
+        self.built_frac = L["built_pct"].astype(np.float32) / 100 if "built_pct" in L else np.zeros_like(self.tree_frac)
         self.ocean = L["ocean"]
         self.kde = np.load(os.path.join(C.DATA_STATIC, "inat_kde.npz"))["kde"].astype(np.float32) / 255
-        self.habitat = np.stack([M.habitat(M.SPECIES[k], self.elev, self.tree_frac, self.eco_class, self.coast_km)
-                                 for k in M.SPECIES_ORDER])
+        self.habitat = np.stack([M.habitat(M.SPECIES[k], self.elev, self.tree_frac, self.eco_class, self.coast_km,
+                                           self.built_frac) for k in M.SPECIES_ORDER])
         self.prior = np.stack([M.prior_from_density(self.kde[i]) for i in range(NS)])
 
 

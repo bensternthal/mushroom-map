@@ -172,7 +172,7 @@ def build(year, current, static, out_root):
     peak = max(days, key=lambda d: sum(s["max"] for s in d["species"].values()))
     print(f"[season {year}] {len(days)} days {days[0]['date']}..{days[-1]['date']}, {len(season_obs)} obs, "
           f"{total_bytes / 1e6:.1f} MB of score files; first trigger {trig_date}; peak day {peak['date']} "
-          + " ".join(f"{k[:4]}={peak['species'][k]['max']}" for k in M.SPECIES_ORDER))
+          + " ".join(f"{k.replace('psilocybe_', 'ps.')[:6]}={peak['species'][k]['max']}" for k in M.SPECIES_ORDER))
     return {"year": year, "current": current, "start": days[0]["date"], "end": days[-1]["date"],
             "days": len(days), "first_trigger_date": trig_date}
 

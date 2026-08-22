@@ -72,8 +72,10 @@ def eco_class_id(l4code):
 # Conventions
 #   elev       : trapezoid (a, b, c, d) in metres -> 0 below a, 1 between b..c, 0 above d
 #   coast_km   : trapezoid on distance-to-ocean in km (omit = anywhere)
+#   builtup    : trapezoid on built-up (urban/landscaped) fraction of the cell (omit = ignore)
+#   tree       : zone-level trapezoid on tree-cover fraction (omit = ignore)
 #   eco        : ecoregion class -> weight 0..1 (missing = 0)
-#   forest     : (lo, hi) ramp on tree-cover fraction of the cell
+#   forest     : (lo, hi) ramp on tree-cover fraction of the cell, or None for non-forest species
 #   rain14/30  : (lo, hi) mm ramp; rain30_weight blends the 30-day term in
 #   temp       : trapezoid (a, b, c, d) on 7-day mean air temp (C), lapse-adjusted to cell
 #   pheno      : day-of-year Gaussian; peak shifts `elev_shift_days_per_100m` for every
@@ -157,6 +159,43 @@ SPECIES = {
         trigger=dict(mode="latest", pre=0.15, rise=7, plateau=14, tail=28, post=0.3),  # flushes fast after big rain
         weights=dict(rain=1.0, temp=1.0, pheno=1.0, trigger=1.3),
     ),
+    # Psilocybe: both are cold-season, frost-tolerant wood-debris species. Legal status differs by state and
+    # changes; the map is natural-history information, not collection guidance (see README).
+    "psilocybe_azurescens": dict(
+        name="Psilocybe azurescens", latin="Psilocybe azurescens",
+        inat_taxa=[179652], color=[40, 90, 215],
+        zones=[
+            dict(label="coastal dune grass / drift-wood debris (Columbia mouth, Long Beach)",
+                 eco={"coastal_lowland": 1.0, "coastal_upland": 0.3},
+                 elev=(-1, 0, 40, 120), coast_km=(-1, 0, 2, 6)),
+        ],
+        forest=None,
+        rain14=(25, 80), rain30=(50, 160), rain30_weight=0.3,
+        temp=(-2, 2, 10, 15), frost_kill=False,
+        pheno=dict(peak_doy=305, sigma_days=25, elev_shift_days_per_100m=0.0, elev_ref=0),     # Oct-Dec
+        trigger=dict(mode="first", pre=0.2, rise=14, plateau=40, tail=80, post=0.7),
+        weights=dict(rain=1.0, temp=1.0, pheno=1.0, trigger=0.8),
+    ),
+    "psilocybe_cyanescens": dict(
+        name="Psilocybe cyanescens", latin="Psilocybe cyanescens",
+        inat_taxa=[179085], color=[135, 60, 195],
+        zones=[
+            dict(label="wood-chip / mulch landscaping in lowland towns",
+                 eco={"willamette_valley": 1.0, "valley_foothills": 0.8, "puget_lowland": 1.0, "coastal_lowland": 0.8,
+                      "coastal_upland": 0.5, "coast_range": 0.5, "west_cascades_low": 0.5, "other": 0.3},
+                 elev=(-1, 0, 300, 600), builtup=(0.02, 0.15, 1.0, 1.01)),
+            dict(label="lowland alder / cottonwood debris", weight=0.35,
+                 eco={"willamette_valley": 0.6, "valley_foothills": 1.0, "puget_lowland": 1.0, "coastal_lowland": 1.0,
+                      "coastal_upland": 0.8, "coast_range": 0.6, "west_cascades_low": 0.6},
+                 elev=(-1, 0, 300, 600), tree=(0.1, 0.3, 1.0, 1.01)),
+        ],
+        forest=None,
+        rain14=(25, 80), rain30=(50, 160), rain30_weight=0.3,
+        temp=(-2, 3, 11, 16), frost_kill=False,
+        pheno=dict(peak_doy=314, sigma_days=28, elev_shift_days_per_100m=0.0, elev_ref=0),     # Oct-Jan
+        trigger=dict(mode="first", pre=0.2, rise=14, plateau=45, tail=90, post=0.7),
+        weights=dict(rain=1.0, temp=1.0, pheno=1.0, trigger=0.8),
+    ),
 }
 SPECIES_ORDER = list(SPECIES)
 
@@ -192,15 +231,21 @@ def trapezoid(x, a, b, c, d):
     return np.minimum(up, down)
 
 
-def habitat(sp, elev, tree_frac, eco_class, coast_km):
+def habitat(sp, elev, tree_frac, eco_class, coast_km, built_frac=None):
     """Static 0-1 habitat suitability for one species."""
-    forest = ramp(tree_frac, *sp["forest"])
+    forest = ramp(tree_frac, *sp["forest"]) if sp.get("forest") else 1.0
+    if built_frac is None:
+        built_frac = np.zeros_like(np.asarray(tree_frac, dtype=np.float32))
     best = np.zeros(np.shape(elev), dtype=np.float32)
     for z in sp["zones"]:
         w = np.array([z["eco"].get(c, 0.0) for c in ECO_CLASSES], dtype=np.float32)[eco_class]
         v = w * trapezoid(elev, *z["elev"]) * float(z.get("weight", 1.0))
         if "coast_km" in z:
             v = v * trapezoid(coast_km, *z["coast_km"])
+        if "builtup" in z:
+            v = v * trapezoid(built_frac, *z["builtup"])
+        if "tree" in z:
+            v = v * trapezoid(tree_frac, *z["tree"])
         best = np.maximum(best, v)
     return forest * best
 

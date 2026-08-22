@@ -109,6 +109,7 @@ def build_worldcover(overview=3):
     from PIL import Image
     Image.MAX_IMAGE_PIXELS = None
     tree = np.zeros(N)
+    built = np.zeros(N)
     nodata = np.zeros(N)
     water = np.zeros(N)
     total = np.zeros(N)
@@ -135,18 +136,19 @@ def build_worldcover(overview=3):
         if not (row_of_y >= 0).any() or not (col_of_x >= 0).any():
             continue
         print(f"[worldcover] {t} overview {overview}: {size}x{size} px ({step * 111000:.0f} m)")
-        for arr, cond in ((tree, a == 10), (nodata, a == 0), (water, a == 80)):
+        for arr, cond in ((tree, a == 10), (built, a == 50), (nodata, a == 0), (water, a == 80)):
             s, _ = accumulate(row_of_y, col_of_x, cond.astype(np.float32))
             arr += s
         _, cnt = accumulate(row_of_y, col_of_x, a)
         total += cnt
     total = np.maximum(total, 1)
     tree_frac = (tree / total).reshape(C.NROWS, C.NCOLS)
+    built_frac = (built / total).reshape(C.NROWS, C.NCOLS)
     ocean_frac = (nodata / total).reshape(C.NROWS, C.NCOLS)
     water_frac = ((nodata + water) / total).reshape(C.NROWS, C.NCOLS)
     stats("tree_frac", tree_frac)
-    print(f"  cells with >50% ocean(nodata): {(ocean_frac > 0.5).sum()}")
-    return tree_frac.astype(np.float32), ocean_frac, water_frac
+    stats("built_frac", built_frac)
+    return tree_frac.astype(np.float32), built_frac.astype(np.float32), ocean_frac, water_frac
 
 
 def shift(a, dr, dc):
@@ -354,11 +356,14 @@ def build_inat(refresh):
         print(f"[inat] using cached {HIST_PATH} (fetched {hist['fetched']})")
     else:
         hist = {"fetched": dt.date.today().isoformat(), "species": {}}
-        for key, sp in M.SPECIES.items():
-            obs = fetch_inat_all(sp["inat_taxa"])
+    missing = [k for k in M.SPECIES if k not in hist["species"]]
+    if missing:
+        for key in missing:                                    # new species: fetch just those
+            obs = fetch_inat_all(M.SPECIES[key]["inat_taxa"])
             hist["species"][key] = obs
             print(f"[inat] {key}: {len(obs)} observations ({sum(o[4] for o in obs)} obscured)")
             time.sleep(1.0)
+        hist.setdefault("fetched_by_species", {}).update({k: dt.date.today().isoformat() for k in missing})
         os.makedirs(C.DATA_STATIC, exist_ok=True)
         json.dump(hist, open(HIST_PATH, "w"), separators=(",", ":"))
     kde = np.zeros((len(M.SPECIES_ORDER), C.NROWS, C.NCOLS), dtype=np.float32)
@@ -482,7 +487,7 @@ def main():
     os.makedirs(C.DATA_STATIC, exist_ok=True)
 
     elev = build_elevation()
-    tree_frac, ocean_frac, water_frac = build_worldcover()
+    tree_frac, built_frac, ocean_frac, water_frac = build_worldcover()
     ocean, coast_km = build_coast(ocean_frac, water_frac)
     eco_class, eco_l4, l4_codes, l4_names = build_ecoregions()
     hist, kde = build_inat(args.refresh_inat)
@@ -491,6 +496,7 @@ def main():
     C.save_npz(os.path.join(C.DATA_STATIC, "layers.npz"),
                elev=np.round(elev).astype(np.int16),
                tree_pct=np.round(tree_frac * 100).astype(np.uint8),
+               built_pct=np.round(built_frac * 100).astype(np.uint8),
                eco_class=eco_class, eco_l4=eco_l4,
                coast_km=coast_km.astype(np.float16), ocean=ocean)
     C.save_npz(os.path.join(C.DATA_STATIC, "inat_kde.npz"), kde=np.round(kde * 255).astype(np.uint8))
@@ -504,6 +510,7 @@ def main():
         "sources": {
             "elevation": "AWS Terrain Tiles (terrarium) z10, mean per cell",
             "forest": "ESA WorldCover 2021 v200 class 10 fraction (~75 m overview)",
+            "builtup": "ESA WorldCover 2021 v200 class 50 fraction (~75 m overview)",
             "ecoregions": "EPA Level IV ecoregions (OR, WA)",
             "inat": "iNaturalist research+needs_id observations, all years",
             "public_lands": "USGS PAD-US 4.1 fee layer",
@@ -513,11 +520,12 @@ def main():
     if not args.no_preview:
         preview("elevation", elev, "terrain", 0, 2500)
         preview("tree_fraction", tree_frac, "Greens", 0, 1)
+        preview("builtup_fraction", built_frac, "Reds", 0, 0.5)
         preview("eco_class", eco_class, "tab20", 0, 19)
         preview("coast_km", np.minimum(coast_km, 30), "Blues_r", 0, 30)
         for si, key in enumerate(M.SPECIES_ORDER):
             preview(f"kde_{key}", kde[si], "magma", 0, 1)
-            h = M.habitat(M.SPECIES[key], elev, tree_frac, eco_class, coast_km)
+            h = M.habitat(M.SPECIES[key], elev, tree_frac, eco_class, coast_km, built_frac)
             preview(f"habitat_{key}", h, "YlGn", 0, 1)
             print(f"  habitat {key:18s} mean {h.mean():.3f}  cells>0.5 {(h > 0.5).sum():6d}")
         print(f"previews in {PREVIEW}")

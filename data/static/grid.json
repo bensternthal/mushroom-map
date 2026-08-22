@@ -267,18 +267,23 @@
   "matsutake",
   "white_chanterelle",
   "golden_chanterelle",
-  "king_bolete"
+  "king_bolete",
+  "psilocybe_azurescens",
+  "psilocybe_cyanescens"
  ],
  "inat_fetched": "2026-08-22",
  "inat_counts": {
   "matsutake": 362,
   "white_chanterelle": 226,
   "golden_chanterelle": 1042,
-  "king_bolete": 1271
+  "king_bolete": 1271,
+  "psilocybe_azurescens": 393,
+  "psilocybe_cyanescens": 363
  },
  "sources": {
   "elevation": "AWS Terrain Tiles (terrarium) z10, mean per cell",
   "forest": "ESA WorldCover 2021 v200 class 10 fraction (~75 m overview)",
+  "builtup": "ESA WorldCover 2021 v200 class 50 fraction (~75 m overview)",
   "ecoregions": "EPA Level IV ecoregions (OR, WA)",
   "inat": "iNaturalist research+needs_id observations, all years",
   "public_lands": "USGS PAD-US 4.1 fee layer"
