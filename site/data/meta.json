@@ -1,0 +1,455 @@
+{
+ "generated_at": "2026-08-22T08:44:47-07:00",
+ "date": "2026-08-22",
+ "doy": 234,
+ "weather": {
+  "history_start": "2026-07-22",
+  "history_end": "2026-08-21",
+  "forecast_end": "2026-08-24",
+  "source": "Open-Meteo (0.1 deg grid, lapse-adjusted)",
+  "regional_mean": {
+   "rain14_mm": 0.5,
+   "rain30_mm": 2.0,
+   "fc3_mm": 0.6,
+   "temp7_c": 18.6
+  },
+  "cells_triggered_pct": 0.0
+ },
+ "grid": {
+  "crs": "EPSG:4326",
+  "bbox": [
+   -124.2,
+   44.5,
+   -121.4,
+   47.002
+  ],
+  "rows": 278,
+  "cols": 224,
+  "dlat": 0.009,
+  "dlon": 0.0125,
+  "row0": "north",
+  "cell_km": [
+   0.971,
+   1.002
+  ]
+ },
+ "species": [
+  {
+   "key": "matsutake",
+   "index": 0,
+   "name": "Matsutake",
+   "latin": "Tricholoma murrillianum (incl. T. magnivelare)",
+   "color": [
+    240,
+    120,
+    30
+   ],
+   "inat_taxa": [
+    521711,
+    62483
+   ],
+   "summary": {
+    "recent_obs_21d": 2,
+    "score_max": 12,
+    "score_mean_habitat": 3.1,
+    "cells_ge15": 0,
+    "cells_ge50": 0,
+    "factor_means_habitat": {
+     "rain": 0.1,
+     "temp": 0.22,
+     "pheno": 0.61,
+     "trigger": 0.25
+    }
+   },
+   "params": {
+    "elev_zones": [
+     [
+      "coastal shore pine / dunes",
+      [
+       -1,
+       0,
+       100,
+       250
+      ]
+     ],
+     [
+      "Cascade hemlock / true fir 600-1600 m",
+      [
+       450,
+       600,
+       1600,
+       1900
+      ]
+     ]
+    ],
+    "rain14_mm": [
+     25,
+     80
+    ],
+    "temp_c": [
+     1,
+     5,
+     13,
+     18
+    ],
+    "peak_doy": 283,
+    "trigger": {
+     "mode": "first",
+     "pre": 0.25,
+     "rise": 10,
+     "plateau": 16,
+     "tail": 35,
+     "post": 0.6
+    }
+   }
+  },
+  {
+   "key": "white_chanterelle",
+   "index": 1,
+   "name": "White chanterelle",
+   "latin": "Cantharellus subalbidus",
+   "color": [
+    30,
+    170,
+    160
+   ],
+   "inat_taxa": [
+    54132
+   ],
+   "summary": {
+    "recent_obs_21d": 1,
+    "score_max": 8,
+    "score_mean_habitat": 3.8,
+    "cells_ge15": 0,
+    "cells_ge50": 0,
+    "factor_means_habitat": {
+     "rain": 0.1,
+     "temp": 0.32,
+     "pheno": 0.53,
+     "trigger": 0.25
+    }
+   },
+   "params": {
+    "elev_zones": [
+     [
+      "Doug-fir / western hemlock 0-1000 m",
+      [
+       -1,
+       0,
+       1000,
+       1300
+      ]
+     ]
+    ],
+    "rain14_mm": [
+     25,
+     80
+    ],
+    "temp_c": [
+     2,
+     7,
+     15,
+     19
+    ],
+    "peak_doy": 283,
+    "trigger": {
+     "mode": "first",
+     "pre": 0.25,
+     "rise": 10,
+     "plateau": 18,
+     "tail": 40,
+     "post": 0.6
+    }
+   }
+  },
+  {
+   "key": "golden_chanterelle",
+   "index": 2,
+   "name": "Pacific golden chanterelle",
+   "latin": "Cantharellus formosus",
+   "color": [
+    245,
+    190,
+    20
+   ],
+   "inat_taxa": [
+    120443
+   ],
+   "summary": {
+    "recent_obs_21d": 7,
+    "score_max": 15,
+    "score_mean_habitat": 5.3,
+    "cells_ge15": 39,
+    "cells_ge50": 0,
+    "factor_means_habitat": {
+     "rain": 0.1,
+     "temp": 0.33,
+     "pheno": 0.9,
+     "trigger": 0.3
+    }
+   },
+   "params": {
+    "elev_zones": [
+     [
+      "Doug-fir / western hemlock 0-1200 m",
+      [
+       -1,
+       0,
+       1200,
+       1500
+      ]
+     ]
+    ],
+    "rain14_mm": [
+     20,
+     70
+    ],
+    "temp_c": [
+     2,
+     7,
+     15,
+     19
+    ],
+    "peak_doy": 293,
+    "trigger": {
+     "mode": "first",
+     "pre": 0.3,
+     "rise": 8,
+     "plateau": 21,
+     "tail": 50,
+     "post": 0.7
+    }
+   }
+  },
+  {
+   "key": "king_bolete",
+   "index": 3,
+   "name": "Fall king bolete",
+   "latin": "Boletus edulis group (incl. var. grandedulis)",
+   "color": [
+    170,
+    60,
+    40
+   ],
+   "inat_taxa": [
+    48701
+   ],
+   "summary": {
+    "recent_obs_21d": 3,
+    "score_max": 8,
+    "score_mean_habitat": 2.4,
+    "cells_ge15": 0,
+    "cells_ge50": 0,
+    "factor_means_habitat": {
+     "rain": 0.1,
+     "temp": 0.43,
+     "pheno": 0.69,
+     "trigger": 0.15
+    }
+   },
+   "params": {
+    "elev_zones": [
+     [
+      "coastal Sitka spruce / shore pine",
+      [
+       -1,
+       0,
+       200,
+       400
+      ]
+     ],
+     [
+      "Cascade true fir / hemlock 800-1500 m",
+      [
+       650,
+       800,
+       1500,
+       1800
+      ]
+     ]
+    ],
+    "rain14_mm": [
+     25,
+     80
+    ],
+    "temp_c": [
+     2,
+     7,
+     15,
+     19
+    ],
+    "peak_doy": 278,
+    "trigger": {
+     "mode": "latest",
+     "pre": 0.15,
+     "rise": 7,
+     "plateau": 14,
+     "tail": 28,
+     "post": 0.3
+    }
+   }
+  }
+ ],
+ "score": {
+  "range": [
+   0,
+   100
+  ],
+  "min_display": 15,
+  "note": "Relative suitability index, not a probability. 100 = best conditions the model can express."
+ },
+ "eco_classes": [
+  "none",
+  "coastal_lowland",
+  "coastal_upland",
+  "coast_range",
+  "willamette_valley",
+  "valley_foothills",
+  "puget_lowland",
+  "west_cascades_low",
+  "west_cascades_montane",
+  "cascade_crest",
+  "subalpine",
+  "north_cascades",
+  "east_cascades",
+  "other"
+ ],
+ "eco_labels": {
+  "none": "water / no data",
+  "coastal_lowland": "Coastal lowlands (Sitka spruce / dunes)",
+  "coastal_upland": "Coastal uplands (spruce-hemlock)",
+  "coast_range": "Coast Range (western hemlock zone)",
+  "willamette_valley": "Willamette Valley floor",
+  "valley_foothills": "Valley foothills (Doug-fir / oak)",
+  "puget_lowland": "Puget / Cowlitz lowlands",
+  "west_cascades_low": "W Cascades lowlands (western hemlock)",
+  "west_cascades_montane": "W Cascades montane (silver fir)",
+  "cascade_crest": "Cascade crest (mountain hemlock)",
+  "subalpine": "Subalpine / alpine",
+  "north_cascades": "North Cascades forest",
+  "east_cascades": "East Cascades (pine / fir)",
+  "other": "Other (non-forest region)"
+ },
+ "factors": {
+  "bytes_per_cell": 22,
+  "layout": [
+   [
+    "rain14_mm",
+    "mm, capped 255"
+   ],
+   [
+    "rain30_mm_x2",
+    "mm / 2, capped 255"
+   ],
+   [
+    "fc3_mm",
+    "forecast precip next 3 days, mm, capped 255"
+   ],
+   [
+    "temp7_enc",
+    "7-day mean air temp at cell elevation: C = v/4 - 20"
+   ],
+   [
+    "days_since_first_trigger",
+    "255 = none yet this season"
+   ],
+   [
+    "days_since_latest_trigger",
+    "255 = none"
+   ],
+   [
+    "elev_x16",
+    "metres / 16"
+   ],
+   [
+    "eco_class",
+    "index into meta.eco_classes"
+   ],
+   [
+    "flags",
+    "bit0 frost-killed, bit1 ocean, bit2 no-ecoregion"
+   ],
+   [
+    "tree_pct",
+    "tree cover %"
+   ],
+   [
+    "matsutake_dyn",
+    "weather x phenology 0-100"
+   ],
+   [
+    "white_chanterelle_dyn",
+    "weather x phenology 0-100"
+   ],
+   [
+    "golden_chanterelle_dyn",
+    "weather x phenology 0-100"
+   ],
+   [
+    "king_bolete_dyn",
+    "weather x phenology 0-100"
+   ],
+   [
+    "matsutake_hab",
+    "habitat 0-100"
+   ],
+   [
+    "white_chanterelle_hab",
+    "habitat 0-100"
+   ],
+   [
+    "golden_chanterelle_hab",
+    "habitat 0-100"
+   ],
+   [
+    "king_bolete_hab",
+    "habitat 0-100"
+   ],
+   [
+    "matsutake_prior",
+    "iNat prior 0-100 (50 = no history)"
+   ],
+   [
+    "white_chanterelle_prior",
+    "iNat prior 0-100 (50 = no history)"
+   ],
+   [
+    "golden_chanterelle_prior",
+    "iNat prior 0-100 (50 = no history)"
+   ],
+   [
+    "king_bolete_prior",
+    "iNat prior 0-100 (50 = no history)"
+   ]
+  ]
+ },
+ "files": {
+  "scores": "scores.bin.gz",
+  "factors": "factors.bin.gz",
+  "recent_obs": "recent_obs.geojson",
+  "public_lands": "public_lands.geojson"
+ },
+ "inat_historical": {
+  "fetched": "2026-08-22",
+  "counts": {
+   "matsutake": 362,
+   "white_chanterelle": 226,
+   "golden_chanterelle": 1042,
+   "king_bolete": 1271
+  }
+ },
+ "model": {
+  "gamma": 0.5,
+  "trigger_mm_48h": 15.0,
+  "season_start": [
+   8,
+   15
+  ],
+  "frost": [
+   -2.0,
+   3,
+   14
+  ],
+  "kde_sigma_km": 8.0
+ }
+}

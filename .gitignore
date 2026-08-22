@@ -1,0 +1,7 @@
+.venv/
+cache/
+__pycache__/
+*.pyc
+.DS_Store
+# site/data is regenerated daily by GitHub Actions (deployed as a Pages artifact,
+# never committed). The seed copy committed once is kept for local testing.

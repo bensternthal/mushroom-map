@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PNW Mushroom Forecast</title>
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.css">
+<script src="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.js"></script>
+<script src="https://unpkg.com/deck.gl@9.3.10/dist.min.js"></script>
+<style>
+  :root { --bg: rgba(255,255,255,.94); --fg: #1e2a22; --muted: #5d6b62; --line: #d9e0da; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; font: 14px/1.4 -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; color: var(--fg); }
+  #map { position: absolute; inset: 0; }
+  #panel { position: absolute; top: 10px; left: 10px; width: 330px; max-height: calc(100% - 20px); overflow: auto;
+           background: var(--bg); border-radius: 10px; box-shadow: 0 2px 12px rgba(0,0,0,.18); padding: 12px 14px; z-index: 2; }
+  #panel h1 { font-size: 17px; margin: 0 0 2px; }
+  .sub { color: var(--muted); font-size: 12px; margin-bottom: 8px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 10px; }
+  .chip { border: 2px solid transparent; border-radius: 999px; padding: 4px 10px; cursor: pointer; font-weight: 600; font-size: 12px;
+          background: #eef1ee; color: #666; user-select: none; transition: all .12s; }
+  .chip.on { color: #fff; }
+  .chip .n { font-weight: 400; opacity: .85; }
+  .row { display: flex; align-items: center; gap: 8px; margin: 4px 0; font-size: 13px; }
+  .row label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+  input[type=range] { width: 120px; }
+  .legend { margin: 8px 0 4px; }
+  .lg { display: flex; align-items: center; gap: 6px; font-size: 12px; margin: 2px 0; }
+  .lg .bar { flex: 1; height: 9px; border-radius: 4px; }
+  .lg .lab { width: 110px; }
+  .small { font-size: 11.5px; color: var(--muted); }
+  .stat { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 10px; font-size: 12px; margin: 6px 0; }
+  .stat b { font-weight: 600; }
+  details summary { cursor: pointer; font-size: 12.5px; color: var(--muted); margin-top: 6px; }
+  #toggle { display: none; position: absolute; top: 10px; left: 10px; z-index: 3; background: var(--bg); border: 0; border-radius: 8px;
+            padding: 8px 12px; font-weight: 600; box-shadow: 0 2px 8px rgba(0,0,0,.2); }
+  @media (max-width: 640px) {
+    #panel { width: calc(100% - 20px); max-height: 55%; top: auto; bottom: 10px; }
+    #panel.hidden { display: none; }
+    #toggle { display: block; }
+  }
+  .maplibregl-popup { z-index: 4; }
+  .maplibregl-ctrl-top-right, .maplibregl-ctrl-bottom-right, .maplibregl-ctrl-bottom-left { z-index: 3; }
+  .maplibregl-popup-content { font: 12.5px/1.35 -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; padding: 10px 12px; max-width: 320px; color: var(--fg); }
+  .maplibregl-popup-content h3 { margin: 0 0 4px; font-size: 13px; }
+  table.sc { border-collapse: collapse; width: 100%; margin: 4px 0; }
+  table.sc td, table.sc th { padding: 2px 4px; text-align: right; font-size: 12px; border-bottom: 1px solid var(--line); }
+  table.sc th { font-weight: 600; color: var(--muted); }
+  table.sc td:first-child, table.sc th:first-child { text-align: left; }
+  .sw { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 4px; vertical-align: -1px; }
+  .kv { display: grid; grid-template-columns: auto auto; gap: 1px 10px; font-size: 12px; margin-top: 4px; }
+  .kv span:nth-child(odd) { color: var(--muted); }
+  #tooltip { position: absolute; z-index: 5; pointer-events: none; background: rgba(30,42,34,.92); color: #fff; padding: 5px 8px;
+             border-radius: 6px; font-size: 12px; display: none; max-width: 260px; }
+  a { color: #1d6b4f; }
+  #err { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); background: #fff3f0; border: 1px solid #e3a297;
+         padding: 14px 18px; border-radius: 8px; z-index: 9; display: none; max-width: 420px; }
+</style>
+</head>
+<body>
+<div id="map"></div>
+<button id="toggle">☰ Forecast</button>
+<div id="panel">
+  <h1>PNW Mushroom Forecast</h1>
+  <div class="sub" id="updated">loading…</div>
+  <div class="chips" id="chips"></div>
+  <div class="row"><label><input type="checkbox" id="lands" checked> Public land</label>
+    <label><input type="checkbox" id="obs" checked> Recent sightings</label>
+    <label><input type="checkbox" id="hill" checked> Hillshade</label></div>
+  <div class="row"><span>Hide cells below</span><input type="range" id="minscore" min="0" max="80" step="5" value="15"><b id="minval">15</b></div>
+  <div class="legend" id="legend"></div>
+  <div class="stat" id="stats"></div>
+  <details><summary>How to read this</summary>
+    <div class="small">
+      Each ~1 km cell shows a <b>relative suitability index (0–100)</b> for finding each species — <b>not a probability</b> and not a guarantee.
+      Score = habitat (ecoregion × elevation band × tree cover × distance to coast) × iNaturalist history prior ×
+      current conditions (14/30-day rain, lapse-adjusted 7-day temperature, days since the season-opening rain, day-of-year phenology,
+      recent regional sightings). When several species are on, the cell takes the colour of the highest-scoring one; opacity ∝ score.
+      Click a cell for the breakdown. iNaturalist fungi coordinates are usually <b>obscured (~20 km)</b>; sightings with a dashed halo are approximate.
+      Public-land overlay = USFS / BLM / state forest fee lands. Harvest rules vary (Mt Hood, Gifford Pinchot and Siuslaw NF free-use permits;
+      WA DNR permit + Discover Pass; state forests have their own rules) — this is where picking is <i>plausible</i>, not legal advice.
+      Respect private land and closures.
+    </div>
+  </details>
+  <div class="small" style="margin-top:6px">Data: Open-Meteo · iNaturalist · ESA WorldCover · EPA ecoregions · USGS PAD-US · AWS Terrain Tiles · OpenFreeMap</div>
+</div>
+<div id="tooltip"></div>
+<div id="err"></div>
+
+<script>
+(async function () {
+  const $ = (s) => document.querySelector(s);
+  const err = (m) => { const e = $('#err'); e.style.display = 'block'; e.textContent = m; };
+  $('#toggle').onclick = () => $('#panel').classList.toggle('hidden');
+
+  async function loadGz(url) {
+    const r = await fetch(url, { cache: 'no-cache' });
+    if (!r.ok) throw new Error(`${url}: HTTP ${r.status}`);
+    if (!('DecompressionStream' in window)) throw new Error('This browser lacks DecompressionStream; please update it.');
+    const buf = await new Response(r.body.pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
+    return new Uint8Array(buf);
+  }
+  const loadJson = async (url) => { const r = await fetch(url, { cache: 'no-cache' }); if (!r.ok) throw new Error(`${url}: HTTP ${r.status}`); return r.json(); };
+
+  let meta, scores, factors, obs, lands;
+  try {
+    meta = await loadJson('data/meta.json');
+    [scores, factors, obs, lands] = await Promise.all([
+      loadGz('data/' + meta.files.scores), loadGz('data/' + meta.files.factors),
+      loadJson('data/' + meta.files.recent_obs), loadJson('data/' + meta.files.public_lands)]);
+  } catch (e) { err('Could not load forecast data: ' + e.message); return; }
+
+  const G = meta.grid, ROWS = G.rows, COLS = G.cols, NCELL = ROWS * COLS;
+  const [W, S, E, N] = G.bbox;
+  const SP = meta.species, NS = SP.length;
+  const FB = meta.factors.bytes_per_cell;
+  const FI = Object.fromEntries(meta.factors.layout.map((l, i) => [l[0], i]));
+  if (scores.length !== NS * NCELL || factors.length !== NCELL * FB) { err('Data size mismatch — meta.json and binaries disagree.'); return; }
+
+  // ---------------- state ----------------
+  const state = { active: new Set(SP.map(s => s.key)), lands: true, obs: true, hill: true, min: 15 };
+
+  // ---------------- header / chips / legend ----------------
+  const gen = new Date(meta.generated_at);
+  $('#updated').textContent = `Updated ${gen.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })} · weather through ${meta.weather.history_end}`;
+  const chips = $('#chips');
+  SP.forEach(s => {
+    const c = document.createElement('span');
+    c.className = 'chip on'; c.dataset.key = s.key;
+    c.innerHTML = `${s.name} <span class="n">${s.summary.recent_obs_21d ? '· ' + s.summary.recent_obs_21d + ' seen' : ''}</span>`;
+    c.title = s.latin;
+    c.style.background = `rgb(${s.color})`; c.style.borderColor = `rgb(${s.color})`;
+    c.onclick = () => { if (state.active.has(s.key)) state.active.delete(s.key); else state.active.add(s.key); paintChips(); update(); };
+    chips.appendChild(c);
+  });
+  function paintChips() {
+    chips.querySelectorAll('.chip').forEach(c => {
+      const s = SP.find(x => x.key === c.dataset.key), on = state.active.has(s.key);
+      c.classList.toggle('on', on);
+      c.style.background = on ? `rgb(${s.color})` : '#eef1ee';
+    });
+  }
+  $('#legend').innerHTML = SP.map(s =>
+    `<div class="lg"><span class="lab">${s.name}</span><span class="bar" style="background:linear-gradient(90deg, rgba(${s.color},.12), rgba(${s.color},1))"></span></div>`).join('')
+    + `<div class="lg small"><span class="lab"></span><span style="flex:1;display:flex;justify-content:space-between"><span>low</span><span>score →</span><span>100</span></span></div>`;
+  const wm = meta.weather.regional_mean;
+  $('#stats').innerHTML = `<span>Rain, last 14 d</span><b>${wm.rain14_mm} mm (regional mean)</b>
+    <span>Rain, last 30 d</span><b>${wm.rain30_mm} mm</b>
+    <span>Next 3 days</span><b>${wm.fc3_mm} mm forecast</b>
+    <span>7-day mean temp</span><b>${wm.temp7_c} °C</b>
+    <span>Season trigger reached</span><b>${meta.weather.cells_triggered_pct}% of cells</b>`;
+
+  // ---------------- map ----------------
+  const map = new maplibregl.Map({
+    container: 'map', style: 'https://tiles.openfreemap.org/styles/positron',
+    center: [(W + E) / 2, (S + N) / 2], zoom: 7, minZoom: 5.5, maxZoom: 15, attributionControl: { compact: true },
+  });
+  const panelW = window.innerWidth > 640 ? 360 : 0;
+  map.fitBounds([[W, S], [E, N]], { padding: { left: panelW, top: 20, right: 20, bottom: 20 }, duration: 0 });
+  map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
+  map.addControl(new maplibregl.ScaleControl({ unit: 'imperial' }), 'bottom-right');
+
+  const overlay = new deck.MapboxOverlay({ interleaved: false, layers: [], getTooltip: tooltip });
+  map.addControl(overlay);
+  const popup = new maplibregl.Popup({ maxWidth: '340px', closeOnClick: true });
+
+  map.on('load', () => {
+    map.addSource('dem', {
+      type: 'raster-dem', tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],
+      encoding: 'terrarium', tileSize: 256, maxzoom: 14,
+      attribution: 'Terrain: <a href="https://registry.opendata.aws/terrain-tiles/">AWS Terrain Tiles</a>',
+    });
+    const firstSymbol = map.getStyle().layers.find(l => l.type === 'symbol');
+    map.addLayer({ id: 'hillshade', type: 'hillshade', source: 'dem',
+      paint: { 'hillshade-exaggeration': 0.35, 'hillshade-shadow-color': '#3d3524', 'hillshade-highlight-color': '#ffffff' } },
+      firstSymbol ? firstSymbol.id : undefined);
+    update();
+  });
+
+  // ---------------- score raster ----------------
+  function buildImage() {
+    const canvas = document.createElement('canvas');
+    canvas.width = COLS; canvas.height = ROWS;
+    const ctx = canvas.getContext('2d');
+    const img = ctx.createImageData(COLS, ROWS);
+    const d = img.data, act = SP.filter(s => state.active.has(s.key)), min = state.min;
+    for (let i = 0; i < NCELL; i++) {
+      let best = -1, bs = -1;
+      for (const s of act) { const v = scores[s.index * NCELL + i]; if (v > bs) { bs = v; best = s.index; } }
+      if (best < 0 || bs <= 0 || bs < min) continue;
+      const c = SP[best].color, a = 45 + 210 * (bs - min) / Math.max(100 - min, 1);
+      const o = i * 4; d[o] = c[0]; d[o + 1] = c[1]; d[o + 2] = c[2]; d[o + 3] = a;
+    }
+    ctx.putImageData(img, 0, 0);
+    return canvas;
+  }
+
+  function cellAt(coord) {
+    if (!coord) return null;
+    const [lon, lat] = coord;
+    const row = Math.floor((N - lat) / G.dlat), col = Math.floor((lon - W) / G.dlon);
+    if (row < 0 || row >= ROWS || col < 0 || col >= COLS) return null;
+    return { row, col, idx: row * COLS + col, lat: N - (row + 0.5) * G.dlat, lon: W + (col + 0.5) * G.dlon };
+  }
+  const F = (idx, name) => factors[idx * FB + FI[name]];
+  const MGR = { USFS: 'US Forest Service', BLM: 'BLM', SDNR: 'WA Dept of Natural Resources', SLB: 'Oregon State Land Board / Board of Forestry',
+                SDOL: 'Oregon Dept of State Lands', OTHS: 'State (other)' };
+
+  // ---------------- layers ----------------
+  function circle(lon, lat, km) {
+    const pts = [], dl = km / 111.32, dn = km / (111.32 * Math.cos(lat * Math.PI / 180));
+    for (let k = 0; k <= 36; k++) { const a = k / 36 * 2 * Math.PI; pts.push([lon + dn * Math.cos(a), lat + dl * Math.sin(a)]); }
+    return pts;
+  }
+  const spByKey = Object.fromEntries(SP.map(s => [s.key, s]));
+  const obsVisible = () => obs.features.filter(f => state.active.has(f.properties.species));
+
+  function layers() {
+    const vis = obsVisible();
+    return [
+      new deck.GeoJsonLayer({
+        id: 'lands', data: lands, visible: state.lands, pickable: true, stroked: true, filled: true,
+        getFillColor: [40, 110, 60, 40], getLineColor: [30, 90, 50, 150], lineWidthMinPixels: 1, lineWidthMaxPixels: 2,
+        autoHighlight: true, highlightColor: [40, 110, 60, 90],
+      }),
+      new deck.BitmapLayer({
+        id: 'scores', bounds: [W, S, E, N], image: buildImage(), pickable: true, opacity: 1,
+        textureParameters: { minFilter: 'nearest', magFilter: 'nearest' },
+        onClick: (info) => { const c = cellAt(info.coordinate); if (c) showCell(c); return true; },
+      }),
+      new deck.PathLayer({
+        id: 'obs-halo', data: vis.filter(f => f.properties.obscured), visible: state.obs,
+        getPath: f => circle(f.geometry.coordinates[0], f.geometry.coordinates[1], 10),
+        getColor: f => [...spByKey[f.properties.species].color, 170], widthMinPixels: 1.5, widthMaxPixels: 2,
+        getDashArray: [6, 4], dashJustified: true, extensions: [new deck.PathStyleExtension({ dash: true })],
+      }),
+      new deck.ScatterplotLayer({
+        id: 'obs', data: vis, visible: state.obs, pickable: true,
+        getPosition: f => f.geometry.coordinates, getFillColor: f => spByKey[f.properties.species].color,
+        getLineColor: [255, 255, 255, 230], stroked: true, lineWidthMinPixels: 1.5,
+        radiusMinPixels: 5, radiusMaxPixels: 9, getRadius: 300,
+        onClick: (info) => { showObs(info.object); return true; },
+      }),
+    ];
+  }
+  function update() { overlay.setProps({ layers: layers() }); }
+
+  // ---------------- tooltips / popups ----------------
+  function tooltip({ layer, object, coordinate }) {
+    if (!layer) return null;
+    if (layer.id === 'obs' && object) {
+      const p = object.properties;
+      return { html: `<b>${spByKey[p.species].name}</b> · ${p.date}${p.obscured ? ' · location obscured' : ''}`, style: tipStyle };
+    }
+    if (layer.id === 'lands' && object) {
+      const p = object.properties;
+      return { html: `<b>${p.name || 'Public land'}</b><br>${MGR[p.mgr] || p.mgr}`, style: tipStyle };
+    }
+    if (layer.id === 'scores') {
+      const c = cellAt(coordinate); if (!c) return null;
+      const parts = SP.filter(s => state.active.has(s.key)).map(s => `${s.name.split(' ').pop()} <b>${scores[s.index * NCELL + c.idx]}</b>`);
+      return { html: parts.join(' · ') + '<br><span style="opacity:.7">click for details</span>', style: tipStyle };
+    }
+    return null;
+  }
+  const tipStyle = { background: 'rgba(30,42,34,.92)', color: '#fff', fontSize: '12px', padding: '5px 8px', borderRadius: '6px' };
+
+  function showCell(c) {
+    const i = c.idx, flags = F(i, 'flags');
+    const dsf = F(i, 'days_since_first_trigger'), dsl = F(i, 'days_since_latest_trigger');
+    const temp = (F(i, 'temp7_enc') / 4 - 20).toFixed(1);
+    const elev = F(i, 'elev_x16') * 16, eco = meta.eco_labels[meta.eco_classes[F(i, 'eco_class')]];
+    const rows = SP.map(s => {
+      const on = state.active.has(s.key), sc = scores[s.index * NCELL + i];
+      const hab = F(i, `${s.key}_hab`), pri = F(i, `${s.key}_prior`), dyn = F(i, `${s.key}_dyn`);
+      return `<tr style="opacity:${on ? 1 : .45}"><td><span class="sw" style="background:rgb(${s.color})"></span>${s.name}</td>
+        <td><b>${sc}</b></td><td>${hab}</td><td>${Math.max(0, (pri - 50) * 2)}%</td><td>${dyn}</td></tr>`;
+    }).join('');
+    const html = `<h3>Cell ${c.lat.toFixed(3)}, ${c.lon.toFixed(3)}</h3>
+      <div class="small">${elev} m · ${eco} · ${F(i, 'tree_pct')}% tree cover${flags & 2 ? ' · open water' : ''}</div>
+      <table class="sc"><tr><th>Species</th><th>Score</th><th>Habitat</th><th>History</th><th>Now</th></tr>${rows}</table>
+      <div class="kv">
+        <span>Rain 14 d / 30 d</span><span>${F(i, 'rain14_mm')} mm / ${F(i, 'rain30_mm_x2') * 2} mm</span>
+        <span>Forecast next 3 d</span><span>${F(i, 'fc3_mm')} mm</span>
+        <span>Soil-temp proxy (7-d mean air)</span><span>${temp} °C${flags & 1 ? ' · <b>hard frost</b>' : ''}</span>
+        <span>Season-opening rain</span><span>${dsf === 255 ? 'none yet (≥15 mm / 48 h since Aug 15)' : dsf + ' days ago'}</span>
+        <span>Latest big rain</span><span>${dsl === 255 ? '—' : dsl + ' days ago'}</span>
+      </div>
+      <div class="small" style="margin-top:5px">Habitat 0–100 · History = smoothed iNaturalist density · Now = weather × phenology × trigger (0–100). Relative index, not a probability.</div>`;
+    popup.setLngLat([c.lon, c.lat]).setHTML(html).addTo(map);
+  }
+  function showObs(f) {
+    const p = f.properties, s = spByKey[p.species];
+    const html = `<h3><span class="sw" style="background:rgb(${s.color})"></span>${s.name}</h3>
+      <div><i>${p.taxon}</i> · observed ${p.date} · ${p.grade === 'research' ? 'research grade' : 'needs ID'}</div>
+      ${p.obscured ? '<div class="small">⚠ Location obscured by iNaturalist (~20 km) — the pin is approximate.</div>' : ''}
+      <div style="margin-top:4px"><a href="${p.url}" target="_blank" rel="noopener">Open on iNaturalist ↗</a></div>`;
+    popup.setLngLat(f.geometry.coordinates).setHTML(html).addTo(map);
+  }
+
+  // ---------------- controls ----------------
+  $('#lands').onchange = e => { state.lands = e.target.checked; update(); };
+  $('#obs').onchange = e => { state.obs = e.target.checked; update(); };
+  $('#hill').onchange = e => { state.hill = e.target.checked; if (map.getLayer('hillshade')) map.setLayoutProperty('hillshade', 'visibility', state.hill ? 'visible' : 'none'); };
+  $('#minscore').oninput = e => { state.min = +e.target.value; $('#minval').textContent = state.min; update(); };
+})();
+</script>
+</body>
+</html>

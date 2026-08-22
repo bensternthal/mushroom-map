@@ -1,0 +1,4 @@
+requests>=2.31
+numpy>=1.26
+shapely>=2.0
+pillow>=10.0
