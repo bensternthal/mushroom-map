@@ -36,7 +36,7 @@ AR_STEP = 0.2
 AR_LATS = np.round(np.arange(C.LAT_MIN, 47.0 + 1e-9, AR_STEP), 4)      # 13
 AR_LONS = np.round(np.arange(C.LON_MIN, C.LON_MAX + 1e-9, AR_STEP), 4)  # 15
 AR_POINTS = [(la, lo) for la in AR_LATS for lo in AR_LONS]
-PLAYBACK_START = (8, 15)     # first day shown
+PLAYBACK_START = (3, 1)      # first day shown (spring morels through the fall season)
 WX_LEAD_DAYS = 31            # history needed before the first day (30-day rain)
 
 
@@ -143,13 +143,14 @@ def build(year, current, static, out_root):
         total_bytes += len(data)
         it = dates.index(day)
         summ = EN.species_summary(static, res)
+        fall = day >= dt.date(day.year, *M.SEASON_START)      # the fall-rain trigger is meaningless in spring
         rec = {
             "date": day.isoformat(),
             "rain_day": round(float(wx.P[it - 1][land].mean()), 1),        # previous complete day
             "rain14": round(float(cond["rain14"][land].mean()), 1),
             "rain30": round(float(cond["rain30"][land].mean()), 1),
             "temp7": round(float(cond["tmean7"][land].mean()), 1),
-            "trig_pct": round(float((~np.isnan(cond["ds_first"]))[land].mean() * 100), 1),
+            "trig_pct": round(float((~np.isnan(cond["ds_first"]))[land].mean() * 100), 1) if fall else 0.0,
             "frost_pct": round(float((cond["frost_days"] >= M.FROST_DAYS)[land].mean() * 100), 1),
             "species": {k: {"obs": int(np.sum(obs_ord[k] == day.toordinal())), "recent21": recent_n[k],
                             "max": summ[k]["score_max"], "mean": summ[k]["score_mean_habitat"],

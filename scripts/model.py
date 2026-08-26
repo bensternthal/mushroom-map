@@ -196,6 +196,30 @@ SPECIES = {
         trigger=dict(mode="first", pre=0.2, rise=14, plateau=45, tail=90, post=0.7),
         weights=dict(rain=1.0, temp=1.0, pheno=1.0, trigger=0.8),
     ),
+    # SPRING species, grouped: one toggle for the common Oregon morels. The fall rain-trigger concept does not
+    # apply, so its weight is 0 - morels run on spring rain, soil warm-up and phenology (peak later at elevation,
+    # chasing the warm-up upslope). Burn-year flushes are NOT modelled (no fire-history layer yet).
+    "morchella": dict(
+        name="Morels (group)",
+        latin="Morchella elata, M. esculenta, M. deliciosa, M. americana, M. snyderi",
+        inat_taxa=[1467061, 58682, 120174, 462132, 473933], color=[115, 95, 45],
+        zones=[
+            dict(label="conifer / mixed forest, low-mid elevation",
+                 eco={"west_cascades_low": 1.0, "west_cascades_montane": 0.8, "cascade_crest": 0.4,
+                      "north_cascades": 0.8, "east_cascades": 0.9, "coast_range": 0.7, "coastal_upland": 0.4,
+                      "coastal_lowland": 0.4, "valley_foothills": 0.9, "puget_lowland": 0.6, "other": 0.3},
+                 elev=(-1, 0, 1400, 1800), tree=(0.15, 0.5, 1.0, 1.01)),
+            dict(label="valley riparian / gallery forest, old orchards", weight=0.8,
+                 eco={"willamette_valley": 0.8, "valley_foothills": 0.8, "puget_lowland": 0.8, "coastal_lowland": 0.5},
+                 elev=(-1, 0, 250, 500), tree=(0.03, 0.2, 1.0, 1.01)),
+        ],
+        forest=None,
+        rain14=(15, 60), rain30=(30, 120), rain30_weight=0.35,
+        temp=(3, 8, 16, 21), frost_kill=False,
+        pheno=dict(peak_doy=130, sigma_days=24, elev_shift_days_per_100m=2.0, elev_ref=200),   # Apr-Jun, later upslope
+        trigger=dict(mode="first", pre=0.5, rise=10, plateau=20, tail=40, post=0.5),           # unused (weight 0)
+        weights=dict(rain=1.0, temp=1.2, pheno=1.2, trigger=0.0),
+    ),
 }
 SPECIES_ORDER = list(SPECIES)
 
@@ -272,7 +296,7 @@ def temp_score(sp, tmean7, frost_days):
 def phenology(sp, doy, elev, recent_n):
     p = sp["pheno"]
     doy = float(doy)
-    if doy < 150:            # Jan-May belongs to the previous fall season's tail
+    if doy < 150 and p["peak_doy"] > 200:   # Jan-May is the previous FALL season's tail (spring species peak as-is)
         doy += 365
     shift = p["elev_shift_days_per_100m"] * np.maximum(np.asarray(elev, dtype=np.float32) - p["elev_ref"], 0) / 100.0
     center = p["peak_doy"] + shift

@@ -1,17 +1,17 @@
 {
- "generated_at": "2026-08-22T11:49:19-07:00",
- "date": "2026-08-22",
- "doy": 234,
+ "generated_at": "2026-08-26T13:55:32-07:00",
+ "date": "2026-08-26",
+ "doy": 238,
  "weather": {
-  "history_start": "2026-07-22",
-  "history_end": "2026-08-21",
-  "forecast_end": "2026-08-24",
+  "history_start": "2026-07-26",
+  "history_end": "2026-08-25",
+  "forecast_end": "2026-08-28",
   "source": "Open-Meteo (0.1 deg grid, lapse-adjusted)",
   "regional_mean": {
    "rain14_mm": 0.5,
    "rain30_mm": 2.0,
-   "fc3_mm": 0.4,
-   "temp7_c": 18.6
+   "fc3_mm": 0.1,
+   "temp7_c": 19.2
   },
   "cells_triggered_pct": 0.0
  },
@@ -49,17 +49,17 @@
     62483
    ],
    "summary": {
-    "score_max": 12,
-    "score_mean_habitat": 3.1,
+    "score_max": 8,
+    "score_mean_habitat": 1.3,
     "cells_ge15": 0,
     "cells_ge50": 0,
     "factor_means_habitat": {
      "rain": 0.1,
-     "temp": 0.22,
-     "pheno": 0.61,
+     "temp": 0.18,
+     "pheno": 0.13,
      "trig": 0.25
     },
-    "recent_obs_21d": 2
+    "recent_obs_21d": 0
    },
    "params": {
     "elev_zones": [
@@ -118,12 +118,12 @@
    ],
    "summary": {
     "score_max": 8,
-    "score_mean_habitat": 3.8,
+    "score_mean_habitat": 3.4,
     "cells_ge15": 0,
     "cells_ge50": 0,
     "factor_means_habitat": {
      "rain": 0.1,
-     "temp": 0.32,
+     "temp": 0.25,
      "pheno": 0.53,
      "trig": 0.25
     },
@@ -176,17 +176,17 @@
     120443
    ],
    "summary": {
-    "score_max": 15,
-    "score_mean_habitat": 5.3,
-    "cells_ge15": 39,
+    "score_max": 14,
+    "score_mean_habitat": 4.3,
+    "cells_ge15": 0,
     "cells_ge50": 0,
     "factor_means_habitat": {
      "rain": 0.1,
-     "temp": 0.33,
-     "pheno": 0.9,
+     "temp": 0.26,
+     "pheno": 0.77,
      "trig": 0.3
     },
-    "recent_obs_21d": 7
+    "recent_obs_21d": 4
    },
    "params": {
     "elev_zones": [
@@ -235,13 +235,13 @@
     48701
    ],
    "summary": {
-    "score_max": 8,
-    "score_mean_habitat": 2.4,
+    "score_max": 7,
+    "score_mean_habitat": 2.1,
     "cells_ge15": 0,
     "cells_ge50": 0,
     "factor_means_habitat": {
      "rain": 0.1,
-     "temp": 0.43,
+     "temp": 0.33,
      "pheno": 0.69,
      "trig": 0.15
     },
@@ -368,7 +368,7 @@
     "cells_ge50": 0,
     "factor_means_habitat": {
      "rain": 0.1,
-     "temp": 0.11,
+     "temp": 0.1,
      "pheno": 0.05,
      "trig": 0.2
     },
@@ -415,6 +415,78 @@
      "post": 0.7
     }
    }
+  },
+  {
+   "key": "morchella",
+   "index": 6,
+   "name": "Morels (group)",
+   "latin": "Morchella elata, M. esculenta, M. deliciosa, M. americana, M. snyderi",
+   "color": [
+    115,
+    95,
+    45
+   ],
+   "inat_taxa": [
+    1467061,
+    58682,
+    120174,
+    462132,
+    473933
+   ],
+   "summary": {
+    "score_max": 4,
+    "score_mean_habitat": 1.7,
+    "cells_ge15": 0,
+    "cells_ge50": 0,
+    "factor_means_habitat": {
+     "rain": 0.1,
+     "temp": 0.41,
+     "pheno": 0.05,
+     "trig": 0.5
+    },
+    "recent_obs_21d": 0
+   },
+   "params": {
+    "elev_zones": [
+     [
+      "conifer / mixed forest, low-mid elevation",
+      [
+       -1,
+       0,
+       1400,
+       1800
+      ]
+     ],
+     [
+      "valley riparian / gallery forest, old orchards",
+      [
+       -1,
+       0,
+       250,
+       500
+      ]
+     ]
+    ],
+    "rain14_mm": [
+     15,
+     60
+    ],
+    "temp_c": [
+     3,
+     8,
+     16,
+     21
+    ],
+    "peak_doy": 130,
+    "trigger": {
+     "mode": "first",
+     "pre": 0.5,
+     "rise": 10,
+     "plateau": 20,
+     "tail": 40,
+     "post": 0.5
+    }
+   }
   }
  ],
  "score": {
@@ -458,7 +530,7 @@
   "other": "Other (non-forest region)"
  },
  "factors": {
-  "bytes_per_cell": 28,
+  "bytes_per_cell": 31,
   "layout": [
    [
     "rain14_mm",
@@ -525,6 +597,10 @@
     "weather x phenology 0-100"
    ],
    [
+    "morchella_dyn",
+    "weather x phenology 0-100"
+   ],
+   [
     "matsutake_hab",
     "habitat 0-100"
    ],
@@ -546,6 +622,10 @@
    ],
    [
     "psilocybe_cyanescens_hab",
+    "habitat 0-100"
+   ],
+   [
+    "morchella_hab",
     "habitat 0-100"
    ],
    [
@@ -571,6 +651,10 @@
    [
     "psilocybe_cyanescens_prior",
     "iNat prior 0-100 (50 = no history)"
+   ],
+   [
+    "morchella_prior",
+    "iNat prior 0-100 (50 = no history)"
    ]
   ]
  },
@@ -589,7 +673,8 @@
    "golden_chanterelle": 1042,
    "king_bolete": 1271,
    "psilocybe_azurescens": 393,
-   "psilocybe_cyanescens": 363
+   "psilocybe_cyanescens": 363,
+   "morchella": 279
   }
  },
  "model": {

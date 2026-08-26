@@ -269,7 +269,8 @@
   "golden_chanterelle",
   "king_bolete",
   "psilocybe_azurescens",
-  "psilocybe_cyanescens"
+  "psilocybe_cyanescens",
+  "morchella"
  ],
  "inat_fetched": "2026-08-22",
  "inat_counts": {
@@ -278,7 +279,8 @@
   "golden_chanterelle": 1042,
   "king_bolete": 1271,
   "psilocybe_azurescens": 393,
-  "psilocybe_cyanescens": 363
+  "psilocybe_cyanescens": 363,
+  "morchella": 279
  },
  "sources": {
   "elevation": "AWS Terrain Tiles (terrarium) z10, mean per cell",

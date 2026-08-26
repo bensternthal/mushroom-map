@@ -1,7 +1,7 @@
 # PNW Mushroom Forecast Map
 
 A static, daily-updated deck.gl map of northwest Oregon / southwest Washington (lat 44.5–47.0, lon −124.2…−121.4,
-"coast to Cascades") on a ~1 km grid, colour-coded by the **relative likelihood** of finding four fall species:
+"coast to Cascades") on a ~1 km grid, colour-coded by the **relative likelihood** of finding the region's common edible (and two Psilocybe) species:
 
 | Species | Key | Habitat encoded |
 |---|---|---|
@@ -11,6 +11,7 @@ A static, daily-updated deck.gl map of northwest Oregon / southwest Washington (
 | Fall king bolete (*Boletus edulis* group) | `king_bolete` | coastal Sitka spruce / shore pine (≤10 km from ocean) **or** Cascade true fir / hemlock 800–1500 m (weighted 0.7) |
 | *Psilocybe azurescens* | `psilocybe_azurescens` | coastal dune grass / drift-wood debris, ≤6 km from the ocean, <120 m; no forest requirement; fruits through frost (Oct–Dec) |
 | *Psilocybe cyanescens* | `psilocybe_cyanescens` | wood-chip / mulch landscaping (WorldCover built-up fraction) in lowland towns, secondarily lowland alder/cottonwood debris; <600 m; fruits through frost (Oct–Jan) |
+| Morels, grouped (*M. elata, esculenta, deliciosa, americana, snyderi*) | `morchella` | **spring** (Apr–Jun, later upslope): conifer/mixed forest <1400 m, secondarily valley riparian / gallery forest and old orchards; fall rain-trigger weight 0; burn-year flushes not modelled |
 
 The number shown is a **0–100 relative suitability index, not a probability** and not a guarantee. The two *Psilocybe*
 layers are natural-history information (habitat model + public iNaturalist records, which iNat obscures for these
@@ -144,8 +145,8 @@ prints the score distribution per species for synthetic conditions and writes `d
 
 ## Season playback
 
-`scripts/build_season.py --year 2024 --year 2025 --year current` scores every day of a fall season (Aug 15 → Dec 31,
-or up to yesterday for the current one) from Open-Meteo's ERA5 **archive** and the cached iNaturalist records, and
+`scripts/build_season.py --year 2024 --year 2025 --year current` scores every day of a season (Mar 1 → Dec 31 —
+spring morels through the fall flush — or up to yesterday for the current one) from Open-Meteo's ERA5 **archive** and the cached iNaturalist records, and
 writes `site/seasons/<year>/<date>.bin.gz` (one score grid per day, ~50–100 KB) plus `timeline.json` (regional rain /
 temperature / trigger coverage / sighting counts per day, and the season's observations for the pins). The workflow
 rebuilds these every run (nothing is committed); the frontend's *Season playback* control loads days lazily as you
