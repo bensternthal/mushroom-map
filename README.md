@@ -19,7 +19,7 @@ taxa); they are controlled substances whose legal status differs between Oregon 
 the map is not collection guidance. It is meant to
 answer "where and when is it worth looking?", and to be tuned by someone who actually picks.
 
-Live site: Cloudflare Workers (`mushroom-map.<subdomain>.workers.dev`), rebuilt every morning by GitHub Actions (see *Setup*).
+Live site: Cloudflare Workers (`https://mushrooms.devpatch.com`), rebuilt every morning by GitHub Actions (see *Setup*).
 
 ## How a cell is scored
 
@@ -108,7 +108,7 @@ and uploads `site/` straight to **Cloudflare** as a Worker with static assets (`
 Cloudflare never needs access to the repo). One-time setup:
 
 1. Cloudflare dashboard → *Workers & Pages* → *Create* → **Upload assets** (or *Start with Hello World*) → name
-   `mushroom-map`. (The dashboard creates a Worker, URL `https://mushroom-map.<subdomain>.workers.dev`; the
+   `mushroom-map`. (The dashboard creates a Worker, URL `https://mushrooms.devpatch.com/`; the
    workflow overwrites it on every run.)
 2. Cloudflare → *My Profile* → *API Tokens* → *Create Token* → template **Edit Cloudflare Workers**. Copy the token
    and your *Account ID* (account Overview page, right-hand sidebar).
